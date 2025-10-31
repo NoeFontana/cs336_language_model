@@ -2,7 +2,7 @@
 
 import pytest
 
-from python_template.cli import create_parser, main
+from lms.cli import create_parser, main
 
 
 class TestCLI:
@@ -11,7 +11,7 @@ class TestCLI:
     def test_create_parser(self):
         """Test that the parser is created correctly."""
         parser = create_parser()
-        assert parser.prog == "python-template"
+        assert parser.prog == "lms"
 
     def test_greet_command(self, capsys):
         """Test the greet command."""

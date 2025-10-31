@@ -2,7 +2,7 @@
 
 import pytest
 
-from python_template.core import Calculator, greet
+from lms.core import Calculator, greet
 
 
 class TestGreet:

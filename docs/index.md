@@ -1,6 +1,6 @@
-# Python Template
+# LMS
 
-Welcome to the Python Template documentation!
+Welcome to the LMS documentation!
 
 This project provides a modern Python project template with best practices and tooling.
 
@@ -19,4 +19,4 @@ This project provides a modern Python project template with best practices and t
 - Documentation with MkDocs
 - Pre-commit hooks for code quality
 
-For more information, see the [README](https://github.com/NoeFontana/python-template/blob/main/README.md).
+For more information, see the [README](https://github.com/NoeFontana/lms/blob/main/README.md).

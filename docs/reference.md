@@ -1,11 +1,11 @@
 # Reference
 
-This is the API reference for the `python-template` package.
+This is the API reference for the `lms` package.
 
-## `python_template.core`
+## `lms.core`
 
-::: python_template.core
+::: lms.core
 
-## `python_template.cli`
+## `lms.cli`
 
-::: python_template.cli
+::: lms.cli

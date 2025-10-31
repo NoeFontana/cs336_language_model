@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "python-template"
+name = "lms"
 version = "0.1.0"
 description = "A modern Python project template with best practices"
 readme = "README.md"
@@ -42,17 +42,17 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/NoeFontana/python-template"
-Repository = "https://github.com/NoeFontana/python-template.git"
-Documentation = "https://NoeFontana.github.io/python-template/"
-Issues = "https://github.com/NoeFontana/python-template/issues"
+Homepage = "https://github.com/NoeFontana/lms"
+Repository = "https://github.com/NoeFontana/lms.git"
+Documentation = "https://NoeFontana.github.io/lms/"
+Issues = "https://github.com/NoeFontana/lms/issues"
 
 [project.scripts]
-python-template = "python_template.cli:main"
+lms = "lms.cli:main"
 
 # Hatchling configuration
 [tool.hatch.build.targets.wheel]
-packages = ["src/python_template"]
+packages = ["src/lms"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -170,7 +170,7 @@ addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "--cov=src/python_template",
+    "--cov=src/lms",
     "--cov-branch",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",

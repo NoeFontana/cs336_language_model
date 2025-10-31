@@ -1,16 +1,16 @@
-"""Command-line interface for the python-template package."""
+"""Command-line interface for the lms package."""
 
 import argparse
 import sys
 
-from python_template import Calculator, greet
+from lms import Calculator, greet
 
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the command-line argument parser."""
     parser = argparse.ArgumentParser(
         description="Python Template CLI",
-        prog="python-template",
+        prog="lms",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

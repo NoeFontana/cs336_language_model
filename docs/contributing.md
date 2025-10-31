@@ -8,8 +8,8 @@ Thank you for your interest in contributing to this project!
 2. Clone your fork locally:
 
    ```bash
-   git clone https://github.com/NoeFontana/python-template.git
-   cd python-template
+   git clone https://github.com/NoeFontana/lms.git
+   cd lms
    ```
 
 3. Install dependencies:
