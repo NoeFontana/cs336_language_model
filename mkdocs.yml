@@ -1,8 +1,8 @@
-site_name: Python Template
+site_name: LMS
 site_description: A modern Python project template with best practices and tooling
-site_url: https://NoeFontana.github.io/python-template/
-repo_url: https://github.com/NoeFontana/python-template
-repo_name: NoeFontana/python-template
+site_url: https://NoeFontana.github.io/lms/
+repo_url: https://github.com/NoeFontana/lms
+repo_name: NoeFontana/lms
 
 theme:
   name: material
@@ -63,4 +63,4 @@ nav:
   - Changelog: changelog.md
 
 watch:
-  - src/python_template
+  - src/lms
