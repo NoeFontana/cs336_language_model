@@ -1,11 +1,3 @@
 # Reference
 
-This is the API reference for the `lms` package.
-
-## `lms.core`
-
-::: lms.core
-
-## `lms.cli`
-
-::: lms.cli
+This is the API reference for the `cs336` assignments and packages.

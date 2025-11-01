@@ -58,9 +58,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - API Reference: reference.md
-  - Contributing: contributing.md
-  - Changelog: changelog.md
+  - Assignments:
+    - "CS336 Basics":
+      - "Learnings": "assignments/cs336_basics/learnings.md"
+  - Development:
+    - "API Reference": "development/reference.md"
 
 watch:
   - src/lms
