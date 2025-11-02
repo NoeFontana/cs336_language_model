@@ -642,16 +642,15 @@ def run_train_bpe(
         return best_pair
 
     logger = logging.getLogger("bpe")
-    logger.setLevel(logging.DEBUG)
 
     vocab = vocab_init(256, special_tokens)
     with Path(input_path).open("r") as f:
         pretokens = pretokenization(split_on_special_tokens(corpus=f.read(), special_tokens=special_tokens))
 
-    logging.debug(f"Got {len(special_tokens)} special tokens")
-    logging.debug(f"Got {len(pretokens)} pretokens")
-
-    logging.debug(f"Remaining {len(pretokens)} after removing special tokens")
+    logger.debug(
+        f"Got {len(special_tokens)} special tokens\nGot {len(pretokens)} pretokens\n"
+        f"Remaining {len(pretokens)} after removing special tokens"
+    )
 
     merges: list[tuple[bytes, bytes]] = []
 
@@ -659,7 +658,6 @@ def run_train_bpe(
         if len(pretokens) == 0:
             break
         best_pair = merge(pretokens)
-        logging.debug(f"New best pair: {best_pair}")
         if best_pair:
             merges.append(best_pair)
             best_flat = b"".join(best_pair)
@@ -681,6 +679,6 @@ def run_train_bpe(
                 new_pretokens[new_pretoken_tuple] = new_pretokens.get(new_pretoken_tuple, 0) + count
             pretokens = new_pretokens
         else:
-            logging.getLogger(__name__).warning("Unexpected: best_pair was None")
+            logger.warning("Unexpected: best_pair was None")
 
     return vocab, merges
