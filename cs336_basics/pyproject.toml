@@ -48,6 +48,7 @@ line-length = 120
 [dependency-groups]
 dev = [
     "ruff>=0.14.3",
+    "scalene>=1.5.55",
 ]
 
 [tool.ruff.lint]
