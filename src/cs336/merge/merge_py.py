@@ -2,6 +2,20 @@ import logging
 
 
 def single_merge(pretokens: dict[tuple[bytes, ...], int]) -> tuple[bytes, bytes] | None:
+    """
+    Finds the best pair of pretokens to merge based on their frequency.
+
+    This function iterates through all pretoken sequences and counts the occurrences of
+    adjacent pairs. It then returns the pair with the highest frequency. If multiple
+    pairs have the same highest frequency, it returns the lexicographically largest one.
+
+    Args:
+        pretokens: A dictionary where keys are tuples of bytes representing pretoken
+                   sequences and values are their frequencies.
+
+    Returns:
+        A tuple of two bytes objects representing the best pair to merge, or None if no pairs are found.
+    """
     occurences: dict[tuple[bytes, bytes], int] = {}
     for pretoken, count in pretokens.items():
         for pair in zip(pretoken, pretoken[1:], strict=False):
@@ -24,6 +38,28 @@ def single_merge(pretokens: dict[tuple[bytes, ...], int]) -> tuple[bytes, bytes]
 def merge(
     pretokens: dict[tuple[bytes, ...], int], initial_vocab: dict[int, bytes], max_vocab_size: int
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    """
+    Performs byte pair encoding (BPE) merges to build a vocabulary up to a specified size.
+
+    This function iteratively finds the most frequent adjacent pair of tokens in the
+    `pretokens` and merges them into a new token. This process continues until the
+    vocabulary reaches `max_vocab_size` or no more merges can be performed.
+
+    Args:
+        pretokens: A dictionary where keys are tuples of bytes representing initial
+                   pretoken sequences and values are their frequencies. This dictionary
+                   is modified in place during the merging process.
+        initial_vocab: A dictionary representing the initial vocabulary, where keys are
+                       integer IDs and values are bytes objects. New merged tokens will
+                       be added to this vocabulary.
+        max_vocab_size: The maximum desired size of the vocabulary. The merging process
+                        stops once this size is reached or exceeded.
+
+    Returns:
+        A tuple containing:
+        - A dictionary representing the final vocabulary (integer ID to bytes object).
+        - A list of tuples, where each tuple represents a merge operation (the two bytes objects that were merged).
+    """
     merges: list[tuple[bytes, bytes]] = []
     vocab = initial_vocab.copy()
     while len(vocab) < max_vocab_size:
