@@ -16,11 +16,24 @@ def find_chunk_boundaries(
     desired_num_chunks: int,
     split_special_token: bytes,
 ) -> list[int]:
+    """Finds byte offsets in a file to divide it into chunks for parallel processing.
+
+    This function divides a file into a desired number of chunks. To avoid splitting
+    in the middle of a multi-byte character or a logical unit of text, it adjusts
+    the chunk boundaries to align with the start of the next occurrence of a
+    specified special token.
+
+    Args:
+        file: The binary file object to be chunked.
+        desired_num_chunks: The target number of chunks to divide the file into.
+        split_special_token: The byte string of a special token (e.g., b"<|endoftext|>")
+            that should not be split. Boundaries are moved to align with this token.
+
+    Returns:
+        A sorted list of unique byte offsets representing the chunk boundaries. The
+        number of chunks created (`len(list) - 1`) may be less than desired if
+        token occurrences are sparse, leading to merged chunks.
     """
-    Chunk the file into parts that can be counted independently.
-    May return fewer chunks if the boundaries end up overlapping.
-    """
-    assert isinstance(split_special_token, bytes), "Must represent special token as a bystring"
 
     fileno = file.fileno()
     file_size = os.fstat(fileno).st_size
@@ -51,6 +64,19 @@ def find_chunk_boundaries(
 
 
 def split_on_special_tokens(corpus: str, special_tokens: list[str]) -> list[str]:
+    """Splits a text corpus by a list of special tokens.
+
+    The special tokens act as delimiters and are removed from the output. This is
+    used to isolate segments of text that do not contain any special tokens.
+
+    Args:
+        corpus: The input string to be split.
+        special_tokens: A list of strings (e.g., ["<|endoftext|>"]) to use as
+            delimiters for splitting the corpus.
+
+    Returns:
+        A list of substrings. Empty strings resulting from the split are excluded.
+    """
     pattern = r"|".join(re.escape(tok) for tok in special_tokens)
     split_corpus = re.split(pattern, corpus, concurrent=True)
     return [s for s in split_corpus if s]
@@ -60,7 +86,20 @@ def pretokenization(
     split_corpus: list[str],
     pattern: str = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""",
 ) -> dict[tuple[bytes, ...], int]:
-    occurences: dict[tuple[bytes, ...], int] = {}
+    """Performs pre-tokenization on text segments and counts token occurrences.
+
+    This function applies a regex pattern to break down text into "pre-tokens",
+    which are the smallest units before BPE merging begins. It then counts the
+    frequency of each unique pre-token sequence.
+
+    Args:
+        split_corpus: A list of strings, typically the output of `split_on_special_tokens`.
+        pattern: The regex pattern used to find pre-tokens. Defaults to the GPT-2 pattern.
+
+    Returns:
+        A dictionary mapping each unique pre-token (represented as a tuple of its
+        constituent bytes) to its frequency count across the corpus.
+    """
 
     compiled_pattern = re.compile(pattern)
 
@@ -75,8 +114,19 @@ def pretokenization(
 def process_chunk(
     chunk_range: tuple[int, int], file_path: str, special_tokens: list[str]
 ) -> dict[tuple[bytes, ...], int]:
-    """
-    Worker function to read, split on special tokens, and pretokenize a single chunk of the file.
+    """Processes a single file chunk for parallel pre-tokenization.
+
+    This worker function is designed to be called by a `ProcessPoolExecutor`. It
+    reads a specific byte range (a chunk) from a file, decodes it, splits it on
+    special tokens, and performs pre-tokenization to generate token counts.
+
+    Args:
+        chunk_range: A tuple `(start, end)` indicating the byte offsets for the chunk.
+        file_path: The path to the file from which the chunk will be read.
+        special_tokens: A list of special tokens used for splitting the text.
+
+    Returns:
+        A dictionary of pre-token counts for the processed chunk.
     """
     start, end = chunk_range
     chunk_size = end - start
@@ -96,7 +146,22 @@ def process_chunk(
 def chunked_pretokenization(
     corpus_path: Path, special_tokens: list[str], num_chunks: int
 ) -> dict[tuple[bytes, ...], int]:
-    """"""
+    """Performs pre-tokenization on a large file in parallel.
+
+    This function orchestrates the pre-tokenization of a large corpus by first
+    dividing the file into chunks, then processing each chunk in a separate
+    process, and finally aggregating the results into a single count dictionary.
+
+    Args:
+        corpus_path: The path to the text file to be tokenized.
+        special_tokens: A list of special tokens to be handled during splitting.
+        num_chunks: The desired number of chunks to split the file into for
+            parallel processing.
+
+    Returns:
+        A dictionary mapping each unique pre-token to its total frequency count
+        across the entire corpus.
+    """
     with Path(corpus_path).open("rb") as f:
         chunk_boundaries = find_chunk_boundaries(f, desired_num_chunks=num_chunks, split_special_token=b"<|endoftext|>")
 
