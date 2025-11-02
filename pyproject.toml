@@ -150,4 +150,4 @@ line-ending = "auto"
 log_cli = true
 log_cli_level = "WARNING"
 markers = ["slow: marks tests as slow to be excluded by default."]
-addopts = ["-s -m not slow"]
+addopts = ["-m", "not slow", "-s"]

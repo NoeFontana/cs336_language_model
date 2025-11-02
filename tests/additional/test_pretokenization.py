@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 
 import pytest
-from cs336.pretokenizatio import chunked_pretokenization, pretokenization, split_on_special_tokens
 from pytest_benchmark.fixture import BenchmarkFixture
+
+from cs336.pretokenization import chunked_pretokenization, pretokenization, split_on_special_tokens
 
 
 @pytest.fixture(scope="module")
