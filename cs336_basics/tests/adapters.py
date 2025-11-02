@@ -657,8 +657,9 @@ def run_train_bpe(
             for pretoken, count in pretokens.items():
                 new_pretoken_list = []
                 i = 0
-                while i < len(pretoken):
-                    if i < len(pretoken) - 1 and (pretoken[i], pretoken[i + 1]) == best_pair:
+                pretoken_length = len(pretoken)
+                while i < pretoken_length:
+                    if i < pretoken_length - 1 and (pretoken[i], pretoken[i + 1]) == best_pair:
                         new_pretoken_list.append(best_flat)
                         i += 2  # If a match, skip the pair
                     else:
