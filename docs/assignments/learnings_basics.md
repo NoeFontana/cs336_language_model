@@ -35,11 +35,13 @@ Interestingly, with this additional caching, 6 chunks provide slightly better pe
 Running on the larger TinyStories train set, using 10 chunks and processes is about 15% faster so we'll use 10 chunks for the rest of the assignment.
 With these optimizations, pretokenization takes about 92s.
 
-With further micro-optimization, namely reducing chunked results asynchronously with Counter, we can cut tokenization time by almost 2:
+With further micro-optimization, namely reducing chunked results asynchronously with Counter, we can cut tokenization time by almost 2 for small datasets:
 
 | Name (Chunks)                                                                   | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
 | ------------------------------------------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
 | `test_chunked_pretokenization_benchmark[10-~/.../TinyStoriesV2-GPT4-valid.txt]` | 0.5710  | 0.6019  | 0.5857   | 0.0114     | 0.5872     | 1.7074 |
+
+This doesn't help for larger datasets.
 
 #### Merging
 
