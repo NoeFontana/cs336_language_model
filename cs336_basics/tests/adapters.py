@@ -601,25 +601,6 @@ def run_train_bpe(
             vocab[token_id] = special_token.encode("utf-8")
         return vocab
 
-    def merge(pretokens: dict[tuple[bytes, ...], int]) -> tuple[bytes, bytes] | None:
-        occurences: dict[tuple[bytes, bytes], int] = {}
-        for pretoken, count in pretokens.items():
-            for pair in zip(pretoken, pretoken[1:]):
-                occurences[pair] = occurences.get(pair, 0) + count
-
-        max_count = 0
-        best_pair: tuple[bytes, bytes] | None = None
-        for pair, count in occurences.items():
-            if count > max_count:
-                max_count = count
-                best_pair = pair
-            elif count == max_count:
-                if best_pair is None:
-                    best_pair = pair
-                else:
-                    best_pair = max(best_pair, pair)
-        return best_pair
-
     logger = logging.getLogger("bpe")
 
     vocab = vocab_init(256, special_tokens)
@@ -643,8 +624,26 @@ def run_train_bpe(
         f"Remaining {len(pretokens)} after removing special tokens"
     )
 
-    merges: list[tuple[bytes, bytes]] = []
+    def merge(pretokens: dict[tuple[bytes, ...], int]) -> tuple[bytes, bytes] | None:
+        occurences: dict[tuple[bytes, bytes], int] = {}
+        for pretoken, count in pretokens.items():
+            for pair in zip(pretoken, pretoken[1:]):
+                occurences[pair] = occurences.get(pair, 0) + count
 
+        max_count = 0
+        best_pair: tuple[bytes, bytes] | None = None
+        for pair, count in occurences.items():
+            if count > max_count:
+                max_count = count
+                best_pair = pair
+            elif count == max_count:
+                if best_pair is None:
+                    best_pair = pair
+                else:
+                    best_pair = max(best_pair, pair)
+        return best_pair
+
+    merges: list[tuple[bytes, bytes]] = []
     while len(vocab) < vocab_size:
         if len(pretokens) == 0:
             break
