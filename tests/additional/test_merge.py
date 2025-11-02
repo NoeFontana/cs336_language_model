@@ -1,8 +1,19 @@
 import logging
+import random
+import string
+from typing import Any, cast
 
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 
+# TODO: Cleanup-imports
 from cs336.merge import merge
+from cs336.merge.merge_py import merge as py_merge
+
+try:
+    from cs336_native import merge as rust_merge
+except ImportError:
+    rust_merge = None
 
 
 def test_merge_tie_breaking(initial_vocab_fixture: dict[int, bytes]) -> None:
@@ -110,3 +121,71 @@ def test_merge_complex_replacement(initial_vocab_fixture: dict[int, bytes]) -> N
 
     assert merges == expected_merges
     assert vocab == expected_vocab
+
+
+@pytest.mark.skipif(rust_merge is None, reason="Rust extension not available")
+class TestMergeBenchmark:
+    """Groups benchmark tests for merge implementations to compare them."""
+
+    # Class attributes to store results between test runs
+    py_result: Any = None
+    py_stats: Any = None
+
+    @pytest.fixture(scope="function")
+    def benchmark_data(self, initial_vocab_fixture: dict[int, bytes]) -> dict[str, Any]:
+        """Generate a shared, complex dataset for benchmarking."""
+        random.seed(42)
+        words = ["".join(random.choices(string.ascii_lowercase, k=random.randint(1, 15))) for _ in range(10_000)]
+        text = " ".join(words) * 5
+        pretokens: dict[tuple[bytes, ...], int] = {}
+        for word in text.split():
+            pretoken = tuple(c.encode("utf-8") for c in word)
+            pretokens[pretoken] = pretokens.get(pretoken, 0) + 1
+
+        return {
+            "pretokens": pretokens,
+            "initial_vocab": initial_vocab_fixture,
+            "max_vocab_size": 1000 - len(initial_vocab_fixture),
+        }
+
+    @pytest.mark.dependency()
+    @pytest.mark.benchmark(group="merge", warmup=True)
+    def test_py_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
+        """Benchmarks the pure Python merge implementation."""
+
+        # Run once to get the result for the correctness check in the next test.
+        TestMergeBenchmark.py_result = py_merge(
+            benchmark_data["pretokens"].copy(),
+            benchmark_data["initial_vocab"].copy(),
+            benchmark_data["max_vocab_size"],
+        )
+
+        # Benchmark the function for performance comparison.
+        benchmark(
+            py_merge, benchmark_data["pretokens"], benchmark_data["initial_vocab"], benchmark_data["max_vocab_size"]
+        )
+        TestMergeBenchmark.py_stats = benchmark.stats
+
+    @pytest.mark.dependency(depends=["TestMergeBenchmark::test_py_merge_benchmark"])
+    @pytest.mark.benchmark(group="merge", warmup=True)
+    def test_rust_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
+        """Benchmarks the Rust merge implementation and compares against the Python version."""
+
+        def run_rust_merge():
+            return cast(Any, rust_merge)(
+                benchmark_data["pretokens"], benchmark_data["initial_vocab"].copy(), benchmark_data["max_vocab_size"]
+            )
+
+        rust_result = benchmark.pedantic(run_rust_merge, rounds=10, iterations=5)
+
+        # 1. Validate that outputs are the same
+        assert TestMergeBenchmark.py_result is not None, "Python benchmark must run first"
+        assert rust_result == TestMergeBenchmark.py_result, "Rust and Python implementations produced different results"
+
+        # 2. Compare performance
+        py_mean = TestMergeBenchmark.py_stats.get("mean", float("inf"))
+        rust_mean = benchmark.stats.get("mean", 0.0)
+
+        speedup = py_mean / rust_mean
+
+        assert 2 < speedup, f"Rust version is not 2x faster. Speedup: {speedup:.2f}x"

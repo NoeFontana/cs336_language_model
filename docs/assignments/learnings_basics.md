@@ -4,6 +4,36 @@ My learnings from the assignment.
 
 ## High-level learnings
 
+### Optimizing BPE
+
+#### Tokenization
+
+- Already "TinyStories Validation set", the most performance could be gained through speeding-up tokenization.
+  As suggested in the assignment, the optimizations was conducted via chunking the file and distributed the chunks over multiple processes.
+  A benchmark was ran with "TinyStories Validation set" with different number of chunks/process. The number of chunks/processes, **N**, is denoted by [**N**]
+
+| Name (Chunks)                                | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
+| -------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
+| `test_chunked_pretokenization_benchmark[10]` | 1.1641  | 1.2785  | 1.2177   | 0.0407     | 1.2169     | 0.8213 |
+| `test_chunked_pretokenization_benchmark[6]`  | 1.2424  | 1.6195  | 1.4866   | 0.1679     | 1.5820     | 0.6727 |
+| `test_chunked_pretokenization_benchmark[2]`  | 2.3072  | 2.4787  | 2.4158   | 0.0658     | 2.4415     | 0.4139 |
+| `test_chunked_pretokenization_benchmark[1]`  | 4.0109  | 4.2727  | 4.1388   | 0.0944     | 4.1427     | 0.2416 |
+
+- To speed things further, a BYTE_CACHE mapping integer indices from [0, 255] to the corresponding bytestring is added. For a single threaded implementation, this leads to about 20-25% speedup.
+
+| Name (Chunks)                                | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
+| -------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
+| `test_chunked_pretokenization_benchmark[6]`  | 1.0108  | 1.1132  | 1.0657   | 0.0373     | 1.0721     | 0.9384 |
+| `test_chunked_pretokenization_benchmark[10]` | 1.1152  | 1.1915  | 1.1517   | 0.0336     | 1.1555     | 0.8683 |
+| `test_chunked_pretokenization_benchmark[2]`  | 1.8768  | 2.3527  | 2.1129   | 0.1736     | 2.0872     | 0.4733 |
+| `test_chunked_pretokenization_benchmark[1]`  | 3.1773  | 3.2989  | 3.2483   | 0.0509     | 3.2655     | 0.3078 |
+
+Interestingly, with this additional caching, 6 chunks provide slightly better performance than 10 chunks.
+
+#### Merging
+
+After optimizing tokenization, we take a look at merging. With the naive Python implementation,
+
 ## Assignment Questions
 
 ### Unicode

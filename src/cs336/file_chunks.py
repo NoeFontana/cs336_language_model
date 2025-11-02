@@ -1,6 +1,9 @@
 import mmap
 import os
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from pathlib import Path
 from typing import BinaryIO, Final
 
 import regex as re
@@ -66,6 +69,7 @@ def pretokenization(
         scanner = compiled_pattern.finditer(string=corpus, concurrent=True)
 
         occurences.update(tuple(BYTE_CACHE[b] for b in match_g.group().encode("utf-8")) for match_g in scanner)
+        # occurences.update(tuple(b.to_bytes(1) for b in match_g.group().encode("utf-8")) for match_g in scanner)
     return occurences
 
 
@@ -88,3 +92,28 @@ def process_chunk(
         pretokens = pretokenization(split_data)
 
         return pretokens
+
+
+def chunked_pretokenization(
+    corpus_path: Path, special_tokens: list[str], num_chunks: int
+) -> dict[tuple[bytes, ...], int]:
+    """"""
+    with Path(corpus_path).open("rb") as f:
+        chunk_boundaries = find_chunk_boundaries(f, desired_num_chunks=num_chunks, split_special_token=b"<|endoftext|>")
+
+    # Recompute num_chunks in case, find_chunk_boundaries returned less chunks than desired.
+    # This may happen when some boundaries are merged due to low density of tokens.
+    num_chunks = len(chunk_boundaries) - 1
+
+    pretokens: dict[tuple[bytes, ...], int] = {}
+    file_path = corpus_path.as_posix()
+    with ProcessPoolExecutor(max_workers=num_chunks) as executor:
+        worker_func = partial(process_chunk, file_path=file_path, special_tokens=special_tokens)
+        results_iterator = executor.map(
+            worker_func,
+            [(chunk_boundaries[i], chunk_boundaries[i + 1]) for i in range(num_chunks)],
+        )
+        for pretokens_chunk in results_iterator:
+            for pretoken, count in pretokens_chunk.items():
+                pretokens[pretoken] = pretokens.get(pretoken, 0) + count
+    return pretokens
