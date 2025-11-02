@@ -2,9 +2,8 @@ import os
 from pathlib import Path
 
 import pytest
+from cs336.pretokenizatio import chunked_pretokenization, pretokenization, split_on_special_tokens
 from pytest_benchmark.fixture import BenchmarkFixture
-
-from cs336.file_chunks import chunked_pretokenization, pretokenization, split_on_special_tokens
 
 
 @pytest.fixture(scope="module")
@@ -38,23 +37,25 @@ def test_pretokenization_benchmark(benchmark: BenchmarkFixture, corpus_data: lis
     assert result is not None, "Pretokenization returned None"
 
 
-@pytest.mark.parametrize("num_chunks", [1, 2, 6, 10])
-def test_chunked_pretokenization_benchmark(benchmark: BenchmarkFixture, num_chunks: int) -> None:
+@pytest.mark.parametrize(
+    "dataset", ["~/datasets/cs336/TinyStoriesV2-GPT4-valid.txt", "~/datasets/cs336/TinyStoriesV2-GPT4-train.txt"]
+)
+@pytest.mark.parametrize("num_chunks", [6, 10])
+def test_chunked_pretokenization_benchmark(benchmark: BenchmarkFixture, dataset: str, num_chunks: int) -> None:
     """
     Benchmarks the entire chunked_pretokenization pipeline on the TinyStories validation set
     with a varying number of chunks.
     """
-    file_path_str = os.path.expanduser("~/datasets/cs336/TinyStoriesV2-GPT4-valid.txt")
-    file_path = Path(file_path_str)
+    corpus_path = Path(dataset).expanduser()
 
-    if not file_path.exists():
-        pytest.skip(f"Dataset not found at {file_path_str}")
+    if not corpus_path.exists():
+        pytest.skip(f"Dataset not found at {corpus_path}")
 
     special_tokens = ["<|endoftext|>"]
 
     result = benchmark(
         chunked_pretokenization,
-        corpus_path=file_path,
+        corpus_path=corpus_path,
         special_tokens=special_tokens,
         num_chunks=num_chunks,
     )

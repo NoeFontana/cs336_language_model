@@ -69,7 +69,6 @@ def pretokenization(
         scanner = compiled_pattern.finditer(string=corpus, concurrent=True)
 
         occurences.update(tuple(BYTE_CACHE[b] for b in match_g.group().encode("utf-8")) for match_g in scanner)
-        # occurences.update(tuple(b.to_bytes(1) for b in match_g.group().encode("utf-8")) for match_g in scanner)
     return occurences
 
 
