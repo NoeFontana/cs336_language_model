@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Iterable
+from pathlib import Path
 from typing import IO, Any, BinaryIO
 
 import numpy.typing as npt
 import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
+import regex as re
 
 
 def run_linear(
@@ -300,7 +303,7 @@ def run_transformer_lm(
         num_heads (int): Number of heads to use in multi-headed attention. `d_model` must be
             evenly divisible by `num_heads`.
         d_ff (int): Dimensionality of the feed-forward inner layer (section 3.3).
-        rope_theta (float): The RoPE $\Theta$ parameter.
+        rope_theta (float): The RoPE $Theta$ parameter.
         weights (dict[str, Tensor]):
             State dict of our reference implementation. {num_layers} refers to an
             integer between `0` and `num_layers - 1` (the layer index).
@@ -589,4 +592,93 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    raise NotImplementedError
+
+    def vocab_init(base_vocab_size: int, special_tokens: list[str]) -> dict[int, bytes]:
+        vocab: dict[int, bytes] = {i: i.to_bytes(1) for i in range(base_vocab_size)}
+        for token_id, special_token in enumerate(special_tokens, start=base_vocab_size):
+            vocab[token_id] = special_token.encode("utf-8")
+        return vocab
+
+    def split_on_special_tokens(corpus: str, special_tokens: list[str]) -> list[str]:
+        pattern = r"|".join(re.escape(tok) for tok in special_tokens)
+        split_corpus = re.split(pattern, corpus, concurrent=True)
+        return [s for s in split_corpus if s]
+
+    def pretokenization(
+        split_corpus: list[str],
+        pattern: str = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""",
+    ) -> dict[tuple[bytes, ...], int]:
+        occurences: dict[tuple[bytes, ...], int] = {}
+
+        for corpus in split_corpus:
+            scanner = re.finditer(pattern=pattern, string=corpus, concurrent=True)
+
+            for match_g in scanner:
+                pretoken = match_g.group().encode("utf-8")
+                pretoken_bytes = tuple(num.to_bytes(1) for num in pretoken)
+                occurences[pretoken_bytes] = occurences.get(pretoken_bytes, 0) + 1
+
+        return occurences
+
+    def merge(pretokens: dict[tuple[bytes, ...], int]) -> tuple[bytes, bytes] | None:
+        occurences: dict[tuple[bytes, bytes], int] = {}
+        for pretoken, count in pretokens.items():
+            for pair in zip(pretoken, pretoken[1:]):
+                occurences[pair] = occurences.get(pair, 0) + count
+
+        max_count = 0
+        best_pair: tuple[bytes, bytes] | None = None
+        for pair, count in occurences.items():
+            if count > max_count:
+                max_count = count
+                best_pair = pair
+            elif count == max_count:
+                if best_pair is None:
+                    best_pair = pair
+                else:
+                    best_pair = max(best_pair, pair)
+        return best_pair
+
+    logger = logging.getLogger("bpe")
+    logger.setLevel(logging.DEBUG)
+
+    vocab = vocab_init(256, special_tokens)
+    with Path(input_path).open("r") as f:
+        pretokens = pretokenization(split_on_special_tokens(corpus=f.read(), special_tokens=special_tokens))
+
+    logging.debug(f"Got {len(special_tokens)} special tokens")
+    logging.debug(f"Got {len(pretokens)} pretokens")
+
+    logging.debug(f"Remaining {len(pretokens)} after removing special tokens")
+
+    merges: list[tuple[bytes, bytes]] = []
+
+    while len(vocab) < vocab_size:
+        if len(pretokens) == 0:
+            break
+        best_pair = merge(pretokens)
+        logging.debug(f"New best pair: {best_pair}")
+        if best_pair:
+            merges.append(best_pair)
+            best_flat = b"".join(best_pair)
+            vocab[len(vocab)] = best_flat
+
+            new_pretokens: dict[tuple[bytes, ...], int] = {}
+            for pretoken, count in pretokens.items():
+                new_pretoken_list = []
+                i = 0
+                while i < len(pretoken):
+                    if i < len(pretoken) - 1 and (pretoken[i], pretoken[i + 1]) == best_pair:
+                        new_pretoken_list.append(best_flat)
+                        i += 2  # If a match, skip the pair
+                    else:
+                        new_pretoken_list.append(pretoken[i])
+                        i += 1
+
+                new_pretoken_tuple = tuple(new_pretoken_list)
+                new_pretokens[new_pretoken_tuple] = new_pretokens.get(new_pretoken_tuple, 0) + count
+            pretokens = new_pretokens
+        else:
+            logging.getLogger(__name__).warning("Unexpected: best_pair was None")
+
+    return vocab, merges
