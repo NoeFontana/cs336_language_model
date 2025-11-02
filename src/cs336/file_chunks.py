@@ -1,6 +1,6 @@
-from collections import Counter
 import mmap
 import os
+from collections import Counter
 from typing import BinaryIO, Final
 
 import regex as re

@@ -143,8 +143,7 @@ def run_multihead_self_attention(
 
     Returns:
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized,
-            batched multi-headed attention
-        implementation with the given QKV projection weights and input features.
+            batched multi-headed attention implementation with the given QKV projection weights and input features.
     """
     raise NotImplementedError
 
@@ -184,8 +183,7 @@ def run_multihead_self_attention_with_rope(
 
     Returns:
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized,
-            batched multi-headed attention
-        implementation with the given QKV projection weights and input features.
+            batched multi-headed attention implementation with the given QKV projection weights and input features.
     """
     raise NotImplementedError
 

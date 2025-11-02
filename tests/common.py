@@ -50,5 +50,5 @@ def gpt2_bytes_to_unicode() -> dict[int, str]:
             cs.append(2**8 + n)
             n += 1
     characters = [chr(n) for n in cs]
-    d = dict(zip(bs, characters))
+    d = dict(zip(bs, characters, strict=True))
     return d
