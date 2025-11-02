@@ -8,10 +8,10 @@ from typing import IO, Any, BinaryIO
 
 import numpy.typing as npt
 import torch
+from cs336.pretokenizatio import chunked_pretokenization
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
-from cs336.file_chunks import chunked_pretokenization
 from cs336.merge import merge
 
 
