@@ -8,11 +8,11 @@ from typing import IO, Any, BinaryIO
 
 import numpy.typing as npt
 import torch
-from cs336.pretokenizatio import chunked_pretokenization
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 from cs336.merge import merge
+from cs336.pretokenization import chunked_pretokenization
 
 
 def run_linear(
@@ -609,7 +609,7 @@ def run_train_bpe(
 
     vocab = vocab_init(256, special_tokens)
 
-    pretokens = chunked_pretokenization(corpus_path=Path(input_path), special_tokens=special_tokens, num_chunks=6)
+    pretokens = chunked_pretokenization(corpus_path=Path(input_path), special_tokens=special_tokens, num_chunks=10)
     logger.debug(
         f"Got {len(special_tokens)} special tokens\nGot {len(pretokens)} pretokens\n"
         f"Remaining {len(pretokens)} after removing special tokens"

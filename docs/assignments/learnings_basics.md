@@ -2,15 +2,17 @@
 
 My learnings from the assignment.
 
+Note: Timings are done on a laptop. While the statistics are gathered over 5+ runs, this remains non-reliable due to hardware limitations.
+
 ## High-level learnings
 
 ### Optimizing BPE
 
-#### Tokenization
+#### Pre-Tokenization
 
-- Already "TinyStories Validation set", the most performance could be gained through speeding-up tokenization.
-  As suggested in the assignment, the optimizations was conducted via chunking the file and distributed the chunks over multiple processes.
-  A benchmark was ran with "TinyStories Validation set" with different number of chunks/process. The number of chunks/processes, **N**, is denoted by [**N**]
+Already "TinyStories Validation set", the most performance could be gained through speeding-up tokenization.
+As suggested in the assignment, the optimizations was conducted via chunking the file and distributed the chunks over multiple processes.
+A benchmark was ran with "TinyStories Validation set" with different number of chunks/process. The number of chunks/processes, **N**, is denoted by [**N**]
 
 | Name (Chunks)                                | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
 | -------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
@@ -19,7 +21,7 @@ My learnings from the assignment.
 | `test_chunked_pretokenization_benchmark[2]`  | 2.3072  | 2.4787  | 2.4158   | 0.0658     | 2.4415     | 0.4139 |
 | `test_chunked_pretokenization_benchmark[1]`  | 4.0109  | 4.2727  | 4.1388   | 0.0944     | 4.1427     | 0.2416 |
 
-- To speed things further, a BYTE_CACHE mapping integer indices from [0, 255] to the corresponding bytestring is added. For a single threaded implementation, this leads to about 20-25% speedup.
+To speed things further, a BYTE_CACHE mapping integer indices from [0, 255] to the corresponding bytestring is added. For a single threaded implementation, this leads to about 20-25% speedup.
 
 | Name (Chunks)                                | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
 | -------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
@@ -28,11 +30,22 @@ My learnings from the assignment.
 | `test_chunked_pretokenization_benchmark[2]`  | 1.8768  | 2.3527  | 2.1129   | 0.1736     | 2.0872     | 0.4733 |
 | `test_chunked_pretokenization_benchmark[1]`  | 3.1773  | 3.2989  | 3.2483   | 0.0509     | 3.2655     | 0.3078 |
 
-Interestingly, with this additional caching, 6 chunks provide slightly better performance than 10 chunks.
+Interestingly, with this additional caching, 6 chunks provide slightly better performance than 10 chunks. This may be due to interference of other processes.
+
+Running on the larger TinyStories train set, using 10 chunks and processes is about 15% faster so we'll use 10 chunks for the rest of the assignment.
+With these optimizations, pretokenization takes about 92s.
+
+With further micro-optimization, namely reducing chunked results asynchronously with Counter, we can cut tokenization time by almost 2:
+
+| Name (Chunks)                                                                   | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
+| ------------------------------------------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
+| `test_chunked_pretokenization_benchmark[10-~/.../TinyStoriesV2-GPT4-valid.txt]` | 0.5710  | 0.6019  | 0.5857   | 0.0114     | 0.5872     | 1.7074 |
 
 #### Merging
 
-After optimizing tokenization, we take a look at merging. With the naive Python implementation,
+#### Merging
+
+After optimizing tokenization, we take a look at merging. With the naive Python implementation,value going forward.
 
 ## Assignment Questions
 

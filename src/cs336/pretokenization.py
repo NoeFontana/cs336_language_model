@@ -1,8 +1,8 @@
 import mmap
 import os
 from collections import Counter
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from functools import partial, reduce
 from pathlib import Path
 from typing import BinaryIO, Final
 
@@ -85,7 +85,7 @@ def split_on_special_tokens(corpus: str, special_tokens: list[str]) -> list[str]
 def pretokenization(
     split_corpus: list[str],
     pattern: str = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""",
-) -> dict[tuple[bytes, ...], int]:
+) -> Counter[tuple[bytes, ...]]:
     """Performs pre-tokenization on text segments and counts token occurrences.
 
     This function applies a regex pattern to break down text into "pre-tokens",
@@ -113,7 +113,7 @@ def pretokenization(
 
 def process_chunk(
     chunk_range: tuple[int, int], file_path: str, special_tokens: list[str]
-) -> dict[tuple[bytes, ...], int]:
+) -> Counter[tuple[bytes, ...]]:
     """Processes a single file chunk for parallel pre-tokenization.
 
     This worker function is designed to be called by a `ProcessPoolExecutor`. It
@@ -145,7 +145,7 @@ def process_chunk(
 
 def chunked_pretokenization(
     corpus_path: Path, special_tokens: list[str], num_chunks: int
-) -> dict[tuple[bytes, ...], int]:
+) -> Counter[tuple[bytes, ...]]:
     """Performs pre-tokenization on a large file in parallel.
 
     This function orchestrates the pre-tokenization of a large corpus by first
@@ -169,15 +169,11 @@ def chunked_pretokenization(
     # This may happen when some boundaries are merged due to low density of tokens.
     num_chunks = len(chunk_boundaries) - 1
 
-    pretokens: dict[tuple[bytes, ...], int] = {}
-    file_path = corpus_path.as_posix()
     with ProcessPoolExecutor(max_workers=num_chunks) as executor:
-        worker_func = partial(process_chunk, file_path=file_path, special_tokens=special_tokens)
-        results_iterator = executor.map(
-            worker_func,
-            [(chunk_boundaries[i], chunk_boundaries[i + 1]) for i in range(num_chunks)],
-        )
-        for pretokens_chunk in results_iterator:
-            for pretoken, count in pretokens_chunk.items():
-                pretokens[pretoken] = pretokens.get(pretoken, 0) + count
-    return pretokens
+        worker_func = partial(process_chunk, file_path=corpus_path.as_posix(), special_tokens=special_tokens)
+        chunk_ranges = [(chunk_boundaries[i], chunk_boundaries[i + 1]) for i in range(num_chunks)]
+        futures = [executor.submit(worker_func, chunk_range) for chunk_range in chunk_ranges]
+
+        # Use reduce with Counter addition for a concise and efficient aggregation.
+        initial_counter: Counter[tuple[bytes, ...]] = Counter()
+        return reduce(lambda acc, future: acc + future.result(), as_completed(futures), initial_counter)
