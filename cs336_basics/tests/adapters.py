@@ -610,8 +610,10 @@ def run_train_bpe(
     ) -> dict[tuple[bytes, ...], int]:
         occurences: dict[tuple[bytes, ...], int] = {}
 
+        compiled_pattern = re.compile(pattern)
+
         for corpus in split_corpus:
-            scanner = re.finditer(pattern=pattern, string=corpus, concurrent=True)
+            scanner = compiled_pattern.finditer(string=corpus, concurrent=True)
 
             for match_g in scanner:
                 pretoken = match_g.group().encode("utf-8")
