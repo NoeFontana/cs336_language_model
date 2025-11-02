@@ -149,7 +149,7 @@ class TestMergeBenchmark:
             "max_vocab_size": 1000,
         }
 
-    @pytest.mark.benchmark(group="merge")
+    @pytest.mark.slow(group="merge")
     def test_py_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
         """Benchmarks the pure Python merge implementation."""
 
@@ -170,7 +170,7 @@ class TestMergeBenchmark:
         TestMergeBenchmark.py_result = result
         TestMergeBenchmark.py_stats = benchmark.stats
 
-    @pytest.mark.benchmark(group="merge")
+    @pytest.mark.slow(group="merge")
     def test_rust_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
         """Benchmarks the Rust merge implementation and compares against the Python version."""
         assert TestMergeBenchmark.py_result is not None, "Python benchmark must run first"
