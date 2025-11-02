@@ -149,4 +149,5 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 log_cli = true
 log_cli_level = "WARNING"
-addopts = "-s"
+markers = ["slow: marks tests as slow to be excluded by default."]
+addopts = ["-s -m not slow"]

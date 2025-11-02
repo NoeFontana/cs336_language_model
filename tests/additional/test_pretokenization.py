@@ -37,6 +37,7 @@ def test_pretokenization_benchmark(benchmark: BenchmarkFixture, corpus_data: lis
     assert result is not None, "Pretokenization returned None"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "dataset", ["~/datasets/cs336/TinyStoriesV2-GPT4-valid.txt", "~/datasets/cs336/TinyStoriesV2-GPT4-train.txt"]
 )
