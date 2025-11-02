@@ -134,52 +134,61 @@ class TestMergeBenchmark:
     @pytest.fixture(scope="function")
     def benchmark_data(self, initial_vocab_fixture: dict[int, bytes]) -> dict[str, Any]:
         """Generate a shared, complex dataset for benchmarking."""
+        num_unique_words = 10_000
+        repetitions = 5
         random.seed(42)
-        words = ["".join(random.choices(string.ascii_lowercase, k=random.randint(1, 15))) for _ in range(10_000)]
-        text = " ".join(words) * 5
-        pretokens: dict[tuple[bytes, ...], int] = {}
-        for word in text.split():
-            pretoken = tuple(c.encode("utf-8") for c in word)
-            pretokens[pretoken] = pretokens.get(pretoken, 0) + 1
+
+        words = [
+            "".join(random.choices(string.ascii_lowercase, k=random.randint(1, 15))) for _ in range(num_unique_words)
+        ]
+        pretoken_generator = (tuple(c.encode("utf-8") for c in word) for word in words)
 
         return {
-            "pretokens": pretokens,
+            "pretokens": dict.fromkeys(pretoken_generator, repetitions),
             "initial_vocab": initial_vocab_fixture,
-            "max_vocab_size": 1000 - len(initial_vocab_fixture),
+            "max_vocab_size": 1000,
         }
 
-    @pytest.mark.dependency()
-    @pytest.mark.benchmark(group="merge", warmup=True)
+    @pytest.mark.benchmark(group="merge")
     def test_py_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
         """Benchmarks the pure Python merge implementation."""
 
-        # Run once to get the result for the correctness check in the next test.
-        TestMergeBenchmark.py_result = py_merge(
-            benchmark_data["pretokens"].copy(),
-            benchmark_data["initial_vocab"].copy(),
-            benchmark_data["max_vocab_size"],
-        )
+        def run_py_merge():
+            # The copy is done inside the lambda to ensure each run is independent.
+            return py_merge(
+                benchmark_data["pretokens"].copy(),
+                benchmark_data["initial_vocab"].copy(),
+                benchmark_data["max_vocab_size"] - len(benchmark_data["initial_vocab"]),
+            )
 
-        # Benchmark the function for performance comparison.
-        benchmark(
-            py_merge, benchmark_data["pretokens"], benchmark_data["initial_vocab"], benchmark_data["max_vocab_size"]
+        # Use pedantic to control rounds and get the result for the correctness check.
+        result = benchmark.pedantic(
+            run_py_merge,
+            rounds=3,
+            iterations=1,
         )
+        TestMergeBenchmark.py_result = result
         TestMergeBenchmark.py_stats = benchmark.stats
 
-    @pytest.mark.dependency(depends=["TestMergeBenchmark::test_py_merge_benchmark"])
-    @pytest.mark.benchmark(group="merge", warmup=True)
+    @pytest.mark.benchmark(group="merge")
     def test_rust_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
         """Benchmarks the Rust merge implementation and compares against the Python version."""
+        assert TestMergeBenchmark.py_result is not None, "Python benchmark must run first"
 
         def run_rust_merge():
             return cast(Any, rust_merge)(
-                benchmark_data["pretokens"], benchmark_data["initial_vocab"].copy(), benchmark_data["max_vocab_size"]
+                benchmark_data["pretokens"],
+                benchmark_data["initial_vocab"].copy(),
+                benchmark_data["max_vocab_size"] - len(benchmark_data["initial_vocab"]),
             )
 
-        rust_result = benchmark.pedantic(run_rust_merge, rounds=10, iterations=5)
+        rust_result = benchmark.pedantic(
+            run_rust_merge,
+            rounds=3,
+            iterations=1,
+        )
 
         # 1. Validate that outputs are the same
-        assert TestMergeBenchmark.py_result is not None, "Python benchmark must run first"
         assert rust_result == TestMergeBenchmark.py_result, "Rust and Python implementations produced different results"
 
         # 2. Compare performance
