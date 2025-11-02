@@ -4,7 +4,7 @@ import logging
 def single_merge(pretokens: dict[tuple[bytes, ...], int]) -> tuple[bytes, bytes] | None:
     occurences: dict[tuple[bytes, bytes], int] = {}
     for pretoken, count in pretokens.items():
-        for pair in zip(pretoken, pretoken[1:], strict=True):
+        for pair in zip(pretoken, pretoken[1:], strict=False):
             occurences[pair] = occurences.get(pair, 0) + count
 
     max_count = 0
