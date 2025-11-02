@@ -1,6 +1,6 @@
 [build-system]
-requires = ["uv_build>=0.8.3,<0.9.0"]
-build-backend = "uv_build"
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "cs336"
@@ -48,15 +48,22 @@ dependencies = [
 ]
 
 
-[tool.uv.build-backend]
-module-name = "cs336"
-module-root = "src"
+[tool.maturin]
+python-source = "src"
+manifest-path = "cs336-native/Cargo.toml"
+module-name = "cs336_native"
+bindings = "pyo3"
 
 [tool.uv]
 python-preference = "managed"
 
 [dependency-groups]
-dev = ["pre-commit>=4.3.0", "ruff>=0.14.3", "scalene>=1.5.55"]
+dev = [
+    "pre-commit>=4.3.0",
+    "pytest-benchmark>=5.2.0",
+    "ruff>=0.14.3",
+    "scalene>=1.5.55",
+]
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.0.0",

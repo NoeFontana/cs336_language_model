@@ -3,8 +3,6 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Iterable
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
 from pathlib import Path
 from typing import IO, Any, BinaryIO
 
@@ -13,7 +11,7 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
-from cs336.file_chunks import find_chunk_boundaries, process_chunk
+from cs336.file_chunks import chunked_pretokenization
 from cs336.merge import merge
 
 
@@ -610,21 +608,8 @@ def run_train_bpe(
     logger = logging.getLogger("bpe")
 
     vocab = vocab_init(256, special_tokens)
-    with Path(input_path).open("rb") as f:
-        chunk_boundaries = find_chunk_boundaries(f, desired_num_chunks=6, split_special_token=b"<|endoftext|>")
 
-    num_chunks = len(chunk_boundaries) - 1
-    pretokens: dict[tuple[bytes, ...], int] = {}
-    with ProcessPoolExecutor(max_workers=num_chunks) as executor:
-        worker_func = partial(process_chunk, file_path=str(input_path), special_tokens=special_tokens)
-        results_iterator = executor.map(
-            worker_func,
-            [(chunk_boundaries[i], chunk_boundaries[i + 1]) for i in range(num_chunks)],
-        )
-        for pretokens_chunk in results_iterator:
-            for pretoken, count in pretokens_chunk.items():
-                pretokens[pretoken] = pretokens.get(pretoken, 0) + count
-
+    pretokens = chunked_pretokenization(corpus_path=Path(input_path), special_tokens=special_tokens, num_chunks=6)
     logger.debug(
         f"Got {len(special_tokens)} special tokens\nGot {len(pretokens)} pretokens\n"
         f"Remaining {len(pretokens)} after removing special tokens"
