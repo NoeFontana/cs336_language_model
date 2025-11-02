@@ -1,10 +1,14 @@
+[build-system]
+requires = ["uv_build>=0.8.3,<0.9.0"]
+build-backend = "uv_build"
 
 [project]
-name = "cs336_language_model"
+name = "cs336"
 version = "0.1.0"
 description = "Learning about language modeling from scratch"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE", "LICENSES/*"]
 requires-python = ">=3.11"
 authors = [{ name = "Noé Fontana", email = "noe.fontana.pro@gmail.com" }]
 keywords = [
@@ -42,6 +46,14 @@ dependencies = [
     "wandb>=0.19.7",
     "ty>=0.0.1a16",
 ]
+
+
+[tool.uv.build-backend]
+module-name = "cs336"
+module-root = "src"
+
+[tool.uv]
+python-preference = "managed"
 
 [dependency-groups]
 dev = ["pre-commit>=4.3.0", "ruff>=0.14.3", "scalene>=1.5.55"]

@@ -60,9 +60,9 @@ nav:
   - Home: index.md
   - Assignments:
     - "CS336 Basics":
-      - "Learnings": "assignments/cs336_basics/learnings.md"
+      - "Learnings": "assignments/learnings_basics.md"
   - Development:
     - "API Reference": "development/reference.md"
 
 watch:
-  - cs336_basics
+  - src

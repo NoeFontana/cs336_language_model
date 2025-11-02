@@ -81,7 +81,7 @@ def test_gradient_clipping():
 
     assert len(t1_grads) == len(t1_c_grads)
 
-    for t1_grad, t1_c_grad in zip(t1_grads, t1_c_grads):
+    for t1_grad, t1_c_grad in zip(t1_grads, t1_c_grads, strict=True):
         numpy.testing.assert_allclose(
             t1_grad.detach().numpy(),
             t1_c_grad.detach().numpy(),
