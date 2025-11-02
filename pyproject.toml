@@ -26,10 +26,25 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-[dependency-groups]
-dev = [
-    "pre-commit>=4.3.0",
+dependencies = [
+    "einops>=0.8.1",                                                           # tensor operations
+    "einx>=0.3.0",                                                             # more general tensor operations
+    "jaxtyping>=0.3.0",                                                        # type hints for pytorch/jax/numpy
+    "numpy",
+    "psutil>=6.1.1",
+    "pytest>=8.3.4",
+    "regex>=2024.11.6",                                                        # more powerful regex than the builtin `re` module
+    "submitit>=1.5.2",                                                         # job submission for SLURM
+    "tiktoken>=0.9.0",
+    "torch~=2.6.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "torch~=2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'", # Intel Macs
+    "tqdm>=4.67.1",
+    "wandb>=0.19.7",
+    "ty>=0.0.1a16",
 ]
+
+[dependency-groups]
+dev = ["pre-commit>=4.3.0", "ruff>=0.14.3", "scalene>=1.5.55"]
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.0.0",
@@ -46,7 +61,7 @@ Documentation = "https://NoeFontana.github.io/cs336_language_model/"
 # Ruff configuration
 [tool.ruff]
 # Same as Black.
-line-length = 88
+line-length = 120
 indent-width = 4
 
 # Assume Python 3.11+.
@@ -90,7 +105,14 @@ select = [
     "SIM101", # duplicate-isinstance-call
     "SIM102", # collapsible-if
     "SIM103", # return-in-try-except-finally
+    "UP",
 ]
+ignore = ["F722"]
+
+
+[tool.ruff.lint.extend-per-file-ignores]
+# Also ignore `E402` in all `__init__.py` files.
+"__init__.py" = ["E402", "F401", "F403", "E501"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
@@ -104,3 +126,8 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "WARNING"
+addopts = "-s"
