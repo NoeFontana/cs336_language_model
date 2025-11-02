@@ -12,7 +12,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train BPE tokenizer on a dataset.")
     parser.add_argument(
         "--input-path",
-        default="data/TinyStoriesV2-GPT4-valid.txt",
+        default="/home/noe/datasets/cs336/TinyStoriesV2-GPT4-valid.txt",
         type=str,
         help="Path to input corpus file (e.g., data/en.txt)",
     )
