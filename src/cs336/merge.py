@@ -53,4 +53,5 @@ def merge(
             pretokens = new_pretokens
         else:
             logging.getLogger(__name__).warning("Unexpected: best_pair was None")
+            break
     return vocab, merges
