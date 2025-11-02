@@ -103,7 +103,7 @@ def pretokenization(
 
     compiled_pattern = re.compile(pattern)
 
-    occurences = Counter()
+    occurences: Counter[tuple[bytes, ...]] = Counter()
     for corpus in split_corpus:
         scanner = compiled_pattern.finditer(string=corpus, concurrent=True)
 
