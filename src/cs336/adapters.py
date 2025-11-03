@@ -616,5 +616,6 @@ def run_train_bpe(
     )
 
     vocab, merges = merge(pretokens, vocab, vocab_size)
+    logger.debug("Succesfully trained BPE tokenizer")
 
     return vocab, merges

@@ -1,3 +1,4 @@
+import logging
 import mmap
 import os
 from collections import Counter
@@ -132,7 +133,7 @@ def process_chunk(
     chunk_size = end - start
 
     if chunk_size == 0:
-        return {}
+        return Counter()
 
     with open(file_path, "rb") as f:
         f.seek(start)
@@ -168,6 +169,8 @@ def chunked_pretokenization(
     # Recompute num_chunks in case, find_chunk_boundaries returned less chunks than desired.
     # This may happen when some boundaries are merged due to low density of tokens.
     num_chunks = len(chunk_boundaries) - 1
+
+    logging.getLogger(__name__).info(f"Chunk boundaries: {chunk_boundaries}")
 
     with ProcessPoolExecutor(max_workers=num_chunks) as executor:
         worker_func = partial(process_chunk, file_path=corpus_path.as_posix(), special_tokens=special_tokens)

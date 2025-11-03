@@ -60,7 +60,9 @@ In the table, timings are conducted on /home/noe/datasets/cs336/ with vocab size
 | Rust with caching + incremental updates             | 0m40s |
 | Bunch of micro-optimizations                        | 0m23s |
 
-Let's get down to real optimization.
+With all that, we get to <6min on TinyStoriesV2-GPT4-train.txt.
+66% of the time is being spent on pretokenization.
+![Profilin](image.png)
 
 ## Assignment Questions
 
