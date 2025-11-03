@@ -1,134 +1,148 @@
 use pyo3::prelude::*;
 use pyo3::{FromPyObject, IntoPyObject};
-// BTreeMap is for your 'pretokens' (key is Vec<Vec<u8>>, which is not Hash)
-// HashMap is for 'vocab' and 'occurences' (keys are hashable)
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BinaryHeap, HashMap};
+use std::vec;
 
-// --- Helper Structs & Types ---
-
-// A Pair of byte tokens.
-#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, IntoPyObject, FromPyObject)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, IntoPyObject, FromPyObject)]
 struct Pair(Vec<u8>, Vec<u8>);
 
-// A Pair of byte token slices. Used for efficient counting.
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
-struct PairRef<'a>(&'a [u8], &'a [u8]);
-
-// A "pretoken" is a sequence of tokens (bytes)
 type Pretoken = Vec<Vec<u8>>;
-// BTreeMap is the Rust equivalent for a Python dict
-// where the key is a non-hashable tuple (like tuple[bytes, ...])
 type Pretokens = BTreeMap<Pretoken, isize>;
-// Vocab is a standard hash map
 type Vocab = HashMap<usize, Vec<u8>>;
 
-// --- Private Rust Helper Function ---
-// (Not exposed to Python)
-
-/// This is a direct translation of your `single_merge` helper function.
-/// It finds the most frequent pair in the current `pretokens`.
-fn single_merge_rust(pretokens: &Pretokens) -> Option<Pair> {
-    // `occurences: dict[tuple[bytes, bytes], int] = {}`. We use references for keys to avoid clones.
-    let mut occurences: HashMap<PairRef, isize> = HashMap::new();
-
-    // `for pretoken, count in pretokens.items():`
-    for (pretoken_vec, count) in pretokens {
-        // `for pair in zip(pretoken, pretoken[1:], strict=False):`
-        for pair_tokens in pretoken_vec.windows(2) {
-            // Create a pair of references, avoiding cloning the vectors.
-            let pair_ref = PairRef(&pair_tokens[0], &pair_tokens[1]);
-            // `occurences[pair] = occurences.get(pair, 0) + count`
-            *occurences.entry(pair_ref).or_insert(0) += *count;
-        }
-    }
-
-    // --- Find best pair ---
-    // Implements your tie-breaking logic (max count, then max pair)
-    occurences
-        .into_iter()
-        .max_by(|(pair_a, count_a), (pair_b, count_b)| {
-            count_a.cmp(count_b).then_with(|| pair_a.cmp(pair_b))
-        })
-        // Convert the best PairRef back to an owned Pair for the return value.
-        .map(|(pair_ref, _count)| Pair(pair_ref.0.to_vec(), pair_ref.1.to_vec()))
+#[derive(Eq, PartialEq)]
+struct HeapItem {
+    priority: isize,
+    pair: Pair,
 }
 
-// --- Public Python Function ---
+impl Ord for HeapItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Compare by priority first (max-heap).
+        // If priorities are equal, break ties by comparing the pairs lexicographically.
+        // The pair that is lexicographically larger has higher priority.
+        self.priority
+            .cmp(&other.priority)
+            .then_with(|| self.pair.cmp(&other.pair))
+    }
+}
 
-/// This is the Rust translation of your main `merge` function.
+impl PartialOrd for HeapItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[pyfunction]
 fn merge(
-    // pyo3 handles the copy from Python dict -> Rust BTreeMap
     mut pretokens: Pretokens,
     initial_vocab: Vocab,
     max_vocab_size: usize,
 ) -> PyResult<(Vocab, Vec<Pair>)> {
-    // `merges: list[tuple[bytes, bytes]] = []`
     let mut merges: Vec<Pair> = Vec::new();
-
-    // `vocab = initial_vocab.copy()`
-    // We get ownership of initial_vocab, so we can just use it
     let mut vocab = initial_vocab;
 
-    // `while len(vocab) < max_vocab_size:`
+    // Let's build our accurate frequency cache
+    let mut occurences: HashMap<Pair, isize> = HashMap::new();
+    for (pretoken_vec, count) in &pretokens {
+        for pair_tokens in pretoken_vec.windows(2) {
+            let pair = Pair(pair_tokens[0].clone(), pair_tokens[1].clone());
+            *occurences.entry(pair).or_insert(0) += *count;
+        }
+    }
+    // Let's build our (approximate) priority queue
+    let mut priority_queue: BinaryHeap<HeapItem> = occurences
+        .iter()
+        .map(|(pair_ref, count)| HeapItem {
+            priority: *count,
+            pair: Pair(pair_ref.0.to_vec(), pair_ref.1.to_vec()),
+        })
+        .collect();
+
     while vocab.len() < max_vocab_size {
-        // `if len(pretokens) == 0:`
         if pretokens.is_empty() {
             break;
         }
 
-        // `best_pair = single_merge(pretokens)`
-        // We pass a reference to our private helper
-        let best_pair = single_merge_rust(&pretokens);
+        let mut found_match: Option<HeapItem> = None;
+        while let Some(priority_pair) = priority_queue.pop() {
+            // If the hit isn't stale, we found our match. Otherwise, try again
+            if let Some(true_priority) = occurences.get(&priority_pair.pair) {
+                if *true_priority == priority_pair.priority {
+                    found_match = Some(priority_pair);
+                    break;
+                }
+            }
+        }
 
-        // `if best_pair:`
-        if let Some(pair) = best_pair {
-            // `merges.append(best_pair)`
-            merges.push(pair.clone());
+        let mut freq_delta: BTreeMap<Pretoken, isize> = BTreeMap::new();
+        if let Some(pair) = found_match {
+            let new_token = [pair.pair.0.as_slice(), pair.pair.1.as_slice()].concat();
 
-            // `best_flat = b"".join(best_pair)`
-            let best_flat = [pair.0.as_slice(), pair.1.as_slice()].concat();
+            merges.push(pair.pair.clone());
+            vocab.insert(vocab.len(), new_token.clone());
 
-            // `vocab[len(vocab)] = best_flat`
-            vocab.insert(vocab.len(), best_flat.clone());
-
-            // --- Rebuild pretokens ---
-            // `new_pretokens: dict[tuple[bytes, ...], int] = {}`
-            let mut new_pretokens: Pretokens = BTreeMap::new();
-
-            // `for pretoken, count in pretokens.items():`
-            for (pretoken_vec, count) in &pretokens {
+            let mut new_pretokens = BTreeMap::new();
+            for (old_pretoken, count) in pretokens.into_iter() {
                 let mut new_pretoken_list: Vec<Vec<u8>> = Vec::new();
-                let mut i = 0;
-                let pretoken_length = pretoken_vec.len();
+                let old_length = old_pretoken.len();
+                let mut has_delta = false;
 
-                // `while i < pretoken_length:`
-                while i < pretoken_length {
-                    // `if i < pretoken_length - 1 and (pretoken[i], pretoken[i + 1]) == best_pair:`
-                    if i < pretoken_length - 1
-                        && pretoken_vec[i] == pair.0
-                        && pretoken_vec[i + 1] == pair.1
+                let mut i = 0;
+                while i < old_length {
+                    if i < old_length - 1
+                        && old_pretoken[i] == pair.pair.0
+                        && old_pretoken[i + 1] == pair.pair.1
                     {
-                        new_pretoken_list.push(best_flat.clone());
-                        i += 2;
+                        has_delta = true;
+                        new_pretoken_list.push(new_token.clone());
+                        i += 2; // Skip both tokens
                     } else {
-                        new_pretoken_list.push(pretoken_vec[i].clone());
+                        new_pretoken_list.push(old_pretoken[i].clone());
                         i += 1;
                     }
                 }
-                *new_pretokens.entry(new_pretoken_list).or_insert(0) += *count;
+
+                if has_delta {
+                    for pair_tokens in old_pretoken.windows(2) {
+                        *freq_delta
+                            .entry(vec![pair_tokens[0].clone(), pair_tokens[1].clone()])
+                            .or_insert(0) -= count;
+                    }
+
+                    for pair_tokens in new_pretoken_list.windows(2) {
+                        *freq_delta
+                            .entry(vec![pair_tokens[0].clone(), pair_tokens[1].clone()])
+                            .or_insert(0) += count;
+                    }
+
+                    *new_pretokens.entry(new_pretoken_list).or_insert(0) += count;
+                } else {
+                    new_pretokens.insert(old_pretoken, count);
+                }
             }
-            // `pretokens = new_pretokens`
             pretokens = new_pretokens;
         } else {
-            // `logging.getLogger...`
-            eprintln!("Warning: Unexpected: best_pair was None. Stopping train.");
+            println!("Warning: Unexpected: best_pair was None. Stopping train.");
             break;
+        }
+
+        // Apply the frequency deltas:
+        for (pretoken_vec, count) in &freq_delta {
+            let pair = Pair(pretoken_vec[0].clone(), pretoken_vec[1].clone());
+
+            let priority = {
+                let count_ref = occurences.entry(pair.clone()).or_insert(0);
+                *count_ref += *count;
+                *count_ref
+            };
+            priority_queue.push(HeapItem {
+                priority: priority,
+                pair: pair,
+            });
         }
     }
 
-    // `return vocab, merges`
-    // pyo3 handles copying the Rust HashMap/Vec -> Python dict/list
     Ok((vocab, merges))
 }
 

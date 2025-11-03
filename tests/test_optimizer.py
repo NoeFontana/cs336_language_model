@@ -1,7 +1,7 @@
 import numpy
 import torch
 
-from ..src.cs336.adapters import get_adamw_cls, run_get_lr_cosine_schedule
+from cs336.adapters import get_adamw_cls, run_get_lr_cosine_schedule
 
 
 def _optimize(opt_class) -> torch.Tensor:

@@ -45,15 +45,19 @@ This doesn't help for larger datasets.
 
 #### Merging
 
-Unless stated otherwise, timings are conducted on /home/noe/datasets/cs336/TinyStoriesV2-GPT4-valid.txt with vocab size 10000
-
 After optimizing tokenization, we take a look at merging.
+We start with the naive implementation.
+I tried to optimize in Python, over TinyStoriesV2-GPT4-valid.txt, with no success. My Python implementations of more advanced strategies with incremental updates proved to have worse performance.
+I then moved to Rust. The direct transcription of the naive Python implementation had similar performance. Removing unrequired byte copies, a 41% speedup was achieved. It's now time to go into the incremental updates.
 
-This is rather slow.
+In the table, timings are conducted on /home/noe/datasets/cs336/ with vocab size 10000
 
-With the naive Python implementation described in the assignment, we get: 1m37s.
-With a direct transcription from Python to Rust, using Gemini, we get: 1m30s.
-With a small optimization on copies, we get: 57s.
+| Implementation                                      | Time  |
+| --------------------------------------------------- | ----- |
+| Naive Python (as per assignment)                    | 1m37s |
+| Direct Python-to-Rust transcription (via Gemini)    | 1m30s |
+| Rust with reference-based pair counting (`PairRef`) | 0m57s |
+| Rust with caching + incremental updates             | 0m40s |
 
 Let's get down to real optimization.
 

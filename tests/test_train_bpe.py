@@ -1,7 +1,8 @@
 import json
 import time
 
-from ..src.cs336.adapters import run_train_bpe
+from cs336.adapters import run_train_bpe
+
 from .common import FIXTURES_PATH, gpt2_bytes_to_unicode
 
 
