@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from einops import rearrange
 
-from ..src.cs336.adapters import (
+from cs336.adapters import (
     run_embedding,
     run_linear,
     run_multihead_self_attention,
