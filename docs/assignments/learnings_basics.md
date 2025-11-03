@@ -58,6 +58,7 @@ In the table, timings are conducted on /home/noe/datasets/cs336/ with vocab size
 | Direct Python-to-Rust transcription (via Gemini)    | 1m30s |
 | Rust with reference-based pair counting (`PairRef`) | 0m57s |
 | Rust with caching + incremental updates             | 0m40s |
+| Bunch of micro-optimizations                        | 0m23s |
 
 Let's get down to real optimization.
 

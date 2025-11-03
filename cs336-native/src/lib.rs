@@ -75,7 +75,7 @@ fn merge(
             }
         }
 
-        let mut freq_delta: BTreeMap<Pretoken, isize> = BTreeMap::new();
+        let mut freq_delta: HashMap<Pair, isize> = HashMap::new();
         if let Some(pair) = found_match {
             let new_token = [pair.pair.0.as_slice(), pair.pair.1.as_slice()].concat();
 
@@ -84,42 +84,45 @@ fn merge(
 
             let mut new_pretokens = BTreeMap::new();
             for (old_pretoken, count) in pretokens.into_iter() {
-                let mut new_pretoken_list: Vec<Vec<u8>> = Vec::new();
                 let old_length = old_pretoken.len();
-                let mut has_delta = false;
 
+                // Check if the pair exists in the pretoken without a full scan.
+                // This is a fast path for sequences that won't be changed.
+                let might_contain_pair = old_pretoken
+                    .windows(2)
+                    .any(|w| w[0] == pair.pair.0 && w[1] == pair.pair.1);
+
+                if !might_contain_pair {
+                    new_pretokens.insert(old_pretoken, count);
+                    continue;
+                }
+
+                for pair_tokens in old_pretoken.windows(2) {
+                    let p = Pair(pair_tokens[0].clone(), pair_tokens[1].clone());
+                    *freq_delta.entry(p).or_insert(0) -= count;
+                }
+
+                let mut new_pretoken_list: Vec<Vec<u8>> = Vec::with_capacity(old_length);
                 let mut i = 0;
                 while i < old_length {
-                    if i < old_length - 1
+                    if i + 1 < old_length
                         && old_pretoken[i] == pair.pair.0
                         && old_pretoken[i + 1] == pair.pair.1
                     {
-                        has_delta = true;
                         new_pretoken_list.push(new_token.clone());
-                        i += 2; // Skip both tokens
+                        i += 2; // Skip both merged tokens
                     } else {
                         new_pretoken_list.push(old_pretoken[i].clone());
                         i += 1;
                     }
                 }
 
-                if has_delta {
-                    for pair_tokens in old_pretoken.windows(2) {
-                        *freq_delta
-                            .entry(vec![pair_tokens[0].clone(), pair_tokens[1].clone()])
-                            .or_insert(0) -= count;
-                    }
-
-                    for pair_tokens in new_pretoken_list.windows(2) {
-                        *freq_delta
-                            .entry(vec![pair_tokens[0].clone(), pair_tokens[1].clone()])
-                            .or_insert(0) += count;
-                    }
-
-                    *new_pretokens.entry(new_pretoken_list).or_insert(0) += count;
-                } else {
-                    new_pretokens.insert(old_pretoken, count);
+                for pair_tokens in new_pretoken_list.windows(2) {
+                    let p = Pair(pair_tokens[0].clone(), pair_tokens[1].clone());
+                    *freq_delta.entry(p).or_insert(0) += count;
                 }
+
+                *new_pretokens.entry(new_pretoken_list).or_insert(0) += count;
             }
             pretokens = new_pretokens;
         } else {
@@ -127,19 +130,13 @@ fn merge(
             break;
         }
 
-        // Apply the frequency deltas:
-        for (pretoken_vec, count) in &freq_delta {
-            let pair = Pair(pretoken_vec[0].clone(), pretoken_vec[1].clone());
-
+        for (pair, delta) in freq_delta {
             let priority = {
                 let count_ref = occurences.entry(pair.clone()).or_insert(0);
-                *count_ref += *count;
+                *count_ref += delta;
                 *count_ref
             };
-            priority_queue.push(HeapItem {
-                priority: priority,
-                pair: pair,
-            });
+            priority_queue.push(HeapItem { priority, pair });
         }
     }
 
