@@ -45,9 +45,17 @@ This doesn't help for larger datasets.
 
 #### Merging
 
-#### Merging
+Unless stated otherwise, timings are conducted on /home/noe/datasets/cs336/TinyStoriesV2-GPT4-valid.txt with vocab size 10000
 
-After optimizing tokenization, we take a look at merging. With the naive Python implementation,value going forward.
+After optimizing tokenization, we take a look at merging.
+
+This is rather slow.
+
+With the naive Python implementation described in the assignment, we get: 1m37s.
+With a direct transcription from Python to Rust, using Gemini, we get: 1m30s.
+With a small optimization on copies, we get: 57s.
+
+Let's get down to real optimization.
 
 ## Assignment Questions
 
