@@ -2,6 +2,12 @@
 requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
+[tool.maturin]
+python-source = "src"
+manifest-path = "cs336-native/Cargo.toml"
+module-name = "cs336_native"
+bindings = "pyo3"
+
 [project]
 name = "cs336"
 version = "0.1.0"
@@ -47,12 +53,6 @@ dependencies = [
     "ty>=0.0.1a16",
 ]
 
-
-[tool.maturin]
-python-source = "src"
-manifest-path = "cs336-native/Cargo.toml"
-module-name = "cs336_native"
-bindings = "pyo3"
 
 [tool.uv]
 python-preference = "managed"
