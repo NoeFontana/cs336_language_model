@@ -9,7 +9,7 @@ import psutil
 import pytest
 import tiktoken
 
-from .adapters import get_tokenizer
+from ..src.cs336.adapters import get_tokenizer
 from .common import FIXTURES_PATH, gpt2_bytes_to_unicode
 
 VOCAB_PATH = FIXTURES_PATH / "gpt2_vocab.json"

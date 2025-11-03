@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.utils.clip_grad import clip_grad_norm_
 
-from .adapters import run_cross_entropy, run_gradient_clipping, run_softmax
+from ..src.cs336.adapters import run_cross_entropy, run_gradient_clipping, run_softmax
 
 
 def test_softmax_matches_pytorch():

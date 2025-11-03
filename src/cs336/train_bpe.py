@@ -2,7 +2,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from tests.adapters import run_train_bpe
+from cs336.adapters import run_train_bpe
 
 
 def main() -> None:
