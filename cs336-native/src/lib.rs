@@ -10,6 +10,10 @@ use std::collections::{BTreeMap, HashMap};
 #[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, IntoPyObject, FromPyObject)]
 struct Pair(Vec<u8>, Vec<u8>);
 
+// A Pair of byte token slices. Used for efficient counting.
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
+struct PairRef<'a>(&'a [u8], &'a [u8]);
+
 // A "pretoken" is a sequence of tokens (bytes)
 type Pretoken = Vec<Vec<u8>>;
 // BTreeMap is the Rust equivalent for a Python dict
@@ -24,29 +28,29 @@ type Vocab = HashMap<usize, Vec<u8>>;
 /// This is a direct translation of your `single_merge` helper function.
 /// It finds the most frequent pair in the current `pretokens`.
 fn single_merge_rust(pretokens: &Pretokens) -> Option<Pair> {
-    // `occurences: dict[tuple[bytes, bytes], int] = {}`
-    let mut occurences: HashMap<Pair, isize> = HashMap::new();
+    // `occurences: dict[tuple[bytes, bytes], int] = {}`. We use references for keys to avoid clones.
+    let mut occurences: HashMap<PairRef, isize> = HashMap::new();
 
     // `for pretoken, count in pretokens.items():`
     for (pretoken_vec, count) in pretokens {
         // `for pair in zip(pretoken, pretoken[1:], strict=False):`
         for pair_tokens in pretoken_vec.windows(2) {
-            let pair = Pair(pair_tokens[0].clone(), pair_tokens[1].clone());
+            // Create a pair of references, avoiding cloning the vectors.
+            let pair_ref = PairRef(&pair_tokens[0], &pair_tokens[1]);
             // `occurences[pair] = occurences.get(pair, 0) + count`
-            *occurences.entry(pair).or_insert(0) += *count;
+            *occurences.entry(pair_ref).or_insert(0) += *count;
         }
     }
 
     // --- Find best pair ---
     // Implements your tie-breaking logic (max count, then max pair)
-    let best_pair = occurences
+    occurences
         .into_iter()
         .max_by(|(pair_a, count_a), (pair_b, count_b)| {
             count_a.cmp(count_b).then_with(|| pair_a.cmp(pair_b))
-        });
-
-    // `return best_pair` (which is an Option)
-    best_pair.map(|(pair, _count)| pair)
+        })
+        // Convert the best PairRef back to an owned Pair for the return value.
+        .map(|(pair_ref, _count)| Pair(pair_ref.0.to_vec(), pair_ref.1.to_vec()))
 }
 
 // --- Public Python Function ---
