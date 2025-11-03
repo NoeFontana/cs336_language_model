@@ -131,6 +131,9 @@ class TestMergeBenchmark:
     py_result: Any = None
     py_stats: Any = None
 
+    rust_result: Any = None
+    rust_stats: Any = None
+
     @pytest.fixture(scope="function")
     def benchmark_data(self, initial_vocab_fixture: dict[int, bytes]) -> dict[str, Any]:
         """Generate a shared, complex dataset for benchmarking."""
@@ -173,11 +176,10 @@ class TestMergeBenchmark:
     @pytest.mark.slow(group="merge")
     def test_rust_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
         """Benchmarks the Rust merge implementation and compares against the Python version."""
-        assert TestMergeBenchmark.py_result is not None, "Python benchmark must run first"
 
         def run_rust_merge():
             return cast(Any, rust_merge)(
-                benchmark_data["pretokens"],
+                benchmark_data["pretokens"].copy(),
                 benchmark_data["initial_vocab"].copy(),
                 benchmark_data["max_vocab_size"] - len(benchmark_data["initial_vocab"]),
             )
@@ -187,13 +189,23 @@ class TestMergeBenchmark:
             rounds=3,
             iterations=1,
         )
+        TestMergeBenchmark.rust_result = rust_result
+        TestMergeBenchmark.rust_stats = benchmark.stats
 
+    @pytest.mark.slow(group="merge")
+    def test_merge_correctness_and_speedup(self, benchmark: BenchmarkFixture) -> None:
         # 1. Validate that outputs are the same
-        assert rust_result == TestMergeBenchmark.py_result, "Rust and Python implementations produced different results"
+
+        assert TestMergeBenchmark.rust_result is not None, "Rust benchmark must run first"
+        assert TestMergeBenchmark.py_result is not None, "Python benchmark must run first"
+
+        assert TestMergeBenchmark.rust_result == TestMergeBenchmark.py_result, (
+            "Rust and Python implementations produced different results"
+        )
 
         # 2. Compare performance
         py_mean = TestMergeBenchmark.py_stats.get("mean", float("inf"))
-        rust_mean = benchmark.stats.get("mean", 0.0)
+        rust_mean = TestMergeBenchmark.rust_stats.get("mean", 0.0)
 
         speedup = py_mean / rust_mean
 
