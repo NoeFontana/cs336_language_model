@@ -36,7 +36,7 @@ def single_merge(pretokens: dict[tuple[bytes, ...], int]) -> tuple[bytes, bytes]
 
 
 def merge(
-    pretokens: dict[tuple[bytes, ...], int], initial_vocab: dict[int, bytes], max_vocab_size: int
+    pretokens: dict[bytes, int], initial_vocab: dict[int, bytes], max_vocab_size: int
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     """
     Performs byte pair encoding (BPE) merges to build a vocabulary up to a specified size.
@@ -47,8 +47,9 @@ def merge(
 
     Args:
         pretokens: A dictionary where keys are tuples of bytes representing initial
-                   pretoken sequences and values are their frequencies. This dictionary
-                   is modified in place during the merging process.
+                   pretoken sequences (as raw bytes) and values are their frequencies.
+                   This dictionary is transformed and then modified in place during
+                   the merging process.
         initial_vocab: A dictionary representing the initial vocabulary, where keys are
                        integer IDs and values are bytes objects. New merged tokens will
                        be added to this vocabulary.
@@ -62,17 +63,26 @@ def merge(
     """
     merges: list[tuple[bytes, bytes]] = []
     vocab = initial_vocab.copy()
+
+    BYTE_CACHE = tuple(bytes([i]) for i in range(256))
+
+    # bytes -> tuple[bytes] to ease merging
+    # {b'hello': 5} -> {(b'h', b'e', b'l', b'l', b'o'): 5}
+    word_freqs: dict[tuple[bytes, ...], int] = {
+        tuple(BYTE_CACHE[b] for b in word_bytes): freq for word_bytes, freq in pretokens.items()
+    }
+
     while len(vocab) < max_vocab_size:
-        if len(pretokens) == 0:
+        if not word_freqs:
             break
-        best_pair = single_merge(pretokens)
+        best_pair = single_merge(word_freqs)
         if best_pair:
             merges.append(best_pair)
             best_flat = b"".join(best_pair)
             vocab[len(vocab)] = best_flat
 
             new_pretokens: dict[tuple[bytes, ...], int] = {}
-            for pretoken, count in pretokens.items():
+            for pretoken, count in word_freqs.items():
                 new_pretoken_list = []
                 i = 0
                 pretoken_length = len(pretoken)
@@ -86,7 +96,7 @@ def merge(
 
                 new_pretoken_tuple = tuple(new_pretoken_list)
                 new_pretokens[new_pretoken_tuple] = new_pretokens.get(new_pretoken_tuple, 0) + count
-            pretokens = new_pretokens
+            word_freqs = new_pretokens
         else:
             logging.getLogger(__name__).warning("Unexpected: best_pair was None")
             break

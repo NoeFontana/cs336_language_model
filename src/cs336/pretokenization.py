@@ -86,7 +86,7 @@ def split_on_special_tokens(corpus: str, special_tokens: list[str]) -> list[str]
 def pretokenization(
     split_corpus: list[str],
     pattern: str = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""",
-) -> Counter[tuple[bytes, ...]]:
+) -> Counter[bytes]:
     """Performs pre-tokenization on text segments and counts token occurrences.
 
     This function applies a regex pattern to break down text into "pre-tokens",
@@ -104,18 +104,15 @@ def pretokenization(
 
     compiled_pattern = re.compile(pattern.encode("utf-8"))
 
-    occurences: Counter[tuple[bytes, ...]] = Counter()
+    occurences: Counter[bytes] = Counter()
     for corpus in split_corpus:
         corpus_bytes = corpus.encode("utf-8")
         scanner = compiled_pattern.finditer(string=corpus_bytes, concurrent=True)
-
-        occurences.update(tuple(BYTE_CACHE[b] for b in match_g.group()) for match_g in scanner)
+        occurences.update(match_g.group() for match_g in scanner)
     return occurences
 
 
-def process_chunk(
-    chunk_range: tuple[int, int], file_path: str, special_tokens: list[str]
-) -> Counter[tuple[bytes, ...]]:
+def process_chunk(chunk_range: tuple[int, int], file_path: str, special_tokens: list[str]) -> Counter[bytes]:
     """Processes a single file chunk for parallel pre-tokenization.
 
     This worker function is designed to be called by a `ProcessPoolExecutor`. It
@@ -145,9 +142,7 @@ def process_chunk(
         return pretokens
 
 
-def chunked_pretokenization(
-    corpus_path: Path, special_tokens: list[str], num_chunks: int
-) -> Counter[tuple[bytes, ...]]:
+def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_chunks: int) -> Counter[bytes]:
     """Performs pre-tokenization on a large file in parallel.
 
     This function orchestrates the pre-tokenization of a large corpus by first
@@ -179,5 +174,5 @@ def chunked_pretokenization(
         futures = [executor.submit(worker_func, chunk_range) for chunk_range in chunk_ranges]
 
         # Use reduce with Counter addition for a concise and efficient aggregation.
-        initial_counter: Counter[tuple[bytes, ...]] = Counter()
+        initial_counter: Counter[bytes] = Counter()
         return reduce(lambda acc, future: acc + future.result(), as_completed(futures), initial_counter)
