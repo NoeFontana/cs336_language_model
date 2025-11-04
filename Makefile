@@ -67,3 +67,6 @@ publish: ## Publish the package to PyPI (requires PYPI_TOKEN)
 
 update: ## Update all dependencies
 	uv sync --upgrade
+
+profile-tokenization:
+	USE_NATIVE_MERGE=1 PYTHONPATH=src uv run scalene --cpu --web --profile-exclude threading.py --- src/cs336/train_bpe.py --vocab-size 10000 --input-path ~/datasets/cs336/TinyStoriesV2-GPT4-train.txt
