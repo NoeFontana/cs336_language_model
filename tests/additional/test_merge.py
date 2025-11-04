@@ -1,19 +1,16 @@
+import importlib.util
 import logging
 import random
 import string
-from typing import Any, cast
+from typing import Any
 
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 
-# TODO: Cleanup-imports
 from cs336.merge import merge
 from cs336.merge.merge_py import merge as py_merge
 
-try:
-    from cs336_native import merge as rust_merge  # type: ignore
-except ImportError:
-    rust_merge = None
+NATIVE_EXTENSIONS_AVAILABLE = importlib.util.find_spec("cs336_native") is not None
 
 
 def test_merge_tie_breaking(initial_vocab_fixture: dict[int, bytes]) -> None:
@@ -99,7 +96,7 @@ def test_merge_complex_replacement(initial_vocab_fixture: dict[int, bytes]) -> N
     assert vocab == expected_vocab
 
 
-@pytest.mark.skipif(rust_merge is None, reason="Rust extension not available")
+@pytest.mark.skipif(not NATIVE_EXTENSIONS_AVAILABLE, reason="Rust extension not available")
 class TestMergeBenchmark:
     """Groups benchmark tests for merge implementations to compare them."""
 
@@ -152,9 +149,10 @@ class TestMergeBenchmark:
     @pytest.mark.slow(group="merge")
     def test_rust_merge_benchmark(self, benchmark: BenchmarkFixture, benchmark_data: dict[str, Any]) -> None:
         """Benchmarks the Rust merge implementation and compares against the Python version."""
+        from cs336_native import merge as rust_merge  # type: ignore
 
         def run_rust_merge():
-            return cast(Any, rust_merge)(
+            return rust_merge(
                 benchmark_data["pretokens"].copy(),
                 benchmark_data["initial_vocab"].copy(),
                 benchmark_data["max_vocab_size"],
