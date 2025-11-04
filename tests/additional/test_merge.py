@@ -11,7 +11,7 @@ from cs336.merge import merge
 from cs336.merge.merge_py import merge as py_merge
 
 try:
-    from cs336_native import merge as rust_merge
+    from cs336_native import merge as rust_merge  # type: ignore
 except ImportError:
     rust_merge = None
 

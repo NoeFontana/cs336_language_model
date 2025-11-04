@@ -66,11 +66,12 @@ class NumpySnapshot:
             assert self.default_test_name is not None, "Test name must be provided or set as default"
             test_name = self.default_test_name
 
+        assert isinstance(test_name, str)
         snapshot_path = self._get_snapshot_path(test_name)
 
         # Convert single array to dictionary for consistent handling
         arrays_dict = actual if isinstance(actual, dict) else {"array": actual}
-        arrays_dict = {k: _canonicalize_array(v) for k, v in arrays_dict.items()}
+        arrays_dict = {k: _canonicalize_array(v) for k, v in arrays_dict.items()}  # type: ignore
 
         # Load the snapshot
         expected_arrays = dict(np.load(snapshot_path))
@@ -133,7 +134,7 @@ class Snapshot:
         if test_name is DEFAULT:
             assert self.default_test_name is not None, "Test name must be provided or set as default"
             test_name = self.default_test_name
-
+        assert isinstance(test_name, str)
         snapshot_path = self._get_snapshot_path(test_name)
 
         # Load the snapshot
