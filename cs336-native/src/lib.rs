@@ -35,12 +35,20 @@ impl PartialOrd for HeapItem {
 
 #[pyfunction]
 fn merge(
-    mut pretokens: Pretokens,
+    raw_pretokens: HashMap<Vec<u8>, isize>,
     initial_vocab: Vocab,
     max_vocab_size: usize,
 ) -> PyResult<(Vocab, Vec<Pair>)> {
     let mut merges: Vec<Pair> = Vec::new();
     let mut vocab = initial_vocab;
+
+    // Transform the input from HashMap<Vec<u8>, isize> to the format needed for merging.
+    // e.g., {b"hello": 5} -> {[b"h", b"e", b"l", b"l", b"o"]: 5}
+    let mut pretokens: Pretokens = BTreeMap::new();
+    for (word_bytes, freq) in raw_pretokens {
+        let sequence: Vec<Vec<u8>> = word_bytes.into_iter().map(|b| vec![b]).collect();
+        pretokens.insert(sequence, freq);
+    }
 
     // Let's build our accurate frequency cache
     let mut occurences: HashMap<Pair, isize> = HashMap::new();

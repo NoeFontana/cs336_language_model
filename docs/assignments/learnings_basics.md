@@ -43,6 +43,12 @@ With further micro-optimization, namely reducing chunked results asynchronously 
 
 This doesn't help for larger datasets.
 
+Fixing the core implementation to operate on single bytes instead of utf-8 multi-bytes drastically speeds up the whole ordeal.
+
+| Name (Chunks)                                                                   | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
+| ------------------------------------------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
+| `test_chunked_pretokenization_benchmark[10-~/.../TinyStoriesV2-GPT4-train.txt]` | 0.2698  | 0.4124  | 0.3128   | 0.5936     | 0.2860     | 3.1967 |
+
 #### Merging
 
 After optimizing tokenization, we take a look at merging.
@@ -64,11 +70,16 @@ In the table, timings are conducted on /home/noe/datasets/cs336/ with vocab size
 
 With all that, we get to 6min on TinyStoriesV2-GPT4-train.txt.
 66% of the time is being spent on pretokenization.
-![Profilin](image.png)
 
 The bottleneck remains the tokenization implementation.
 
 By applying the regex on byte, we get down to 4m46s.
+
+With the multi-byte -> single-byte pretokenization fix, we get down to 4m14s.
+At this point, slightly less than two minutes are spent on pretokenization or merging.
+
+Further optimization of merging likely require a rewrite to use double linked list.
+Further optimization of pretokenization likely requires a rewrite to a native language with better multithreading.
 
 ## Assignment Questions
 
