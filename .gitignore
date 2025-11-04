@@ -7,6 +7,7 @@ tests/fixtures/
 **/data/*.txt
 profile.json
 profile.html
+/results/
 
 # C extensions
 *.so
