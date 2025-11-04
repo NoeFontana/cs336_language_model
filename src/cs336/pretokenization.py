@@ -102,13 +102,14 @@ def pretokenization(
         constituent bytes) to its frequency count across the corpus.
     """
 
-    compiled_pattern = re.compile(pattern)
+    compiled_pattern = re.compile(pattern.encode("utf-8"))
 
     occurences: Counter[tuple[bytes, ...]] = Counter()
     for corpus in split_corpus:
-        scanner = compiled_pattern.finditer(string=corpus, concurrent=True)
+        corpus_bytes = corpus.encode("utf-8")
+        scanner = compiled_pattern.finditer(string=corpus_bytes, concurrent=True)
 
-        occurences.update(tuple(BYTE_CACHE[b] for b in match_g.group().encode("utf-8")) for match_g in scanner)
+        occurences.update(tuple(BYTE_CACHE[b] for b in match_g.group()) for match_g in scanner)
     return occurences
 
 
