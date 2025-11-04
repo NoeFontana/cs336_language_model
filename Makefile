@@ -1,4 +1,4 @@
-.PHONY: help install test lint check lint-check type-check clean docs docs-serve docs-build pre-commit
+.PHONY: help install build-native test lint check lint-check type-check clean docs docs-serve docs-build pre-commit
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -6,6 +6,9 @@ help: ## Show this help message
 
 install: ## Install the package and all dependencies
 	uv sync --all-groups
+
+build-native:
+	CARGO_BUILD_FLAGS="--release" uv pip install -e .
 
 test: ## Run tests
 	uv run pytest
