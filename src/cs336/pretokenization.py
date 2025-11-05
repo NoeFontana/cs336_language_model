@@ -79,7 +79,7 @@ def split_on_special_tokens(corpus: str, special_tokens: list[str]) -> list[str]
         A list of substrings. Empty strings resulting from the split are excluded.
     """
     pattern = r"|".join(re.escape(tok) for tok in special_tokens)
-    split_corpus = re.split(pattern, corpus, concurrent=True)
+    split_corpus = re.split(pattern, corpus, concurrent=False)
     return [s for s in split_corpus if s]
 
 
@@ -107,7 +107,7 @@ def pretokenization(
     occurences: Counter[bytes] = Counter()
     for corpus in split_corpus:
         corpus_bytes = corpus.encode("utf-8")
-        scanner = compiled_pattern.finditer(string=corpus_bytes, concurrent=True)
+        scanner = compiled_pattern.finditer(string=corpus_bytes, concurrent=False)
         occurences.update(match_g.group() for match_g in scanner)
     return occurences
 

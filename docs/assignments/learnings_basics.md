@@ -47,7 +47,7 @@ Fixing the core implementation to operate on single bytes instead of utf-8 multi
 
 | Name (Chunks)                                                                   | Min (s) | Max (s) | Mean (s) | StdDev (s) | Median (s) | OPS    |
 | ------------------------------------------------------------------------------- | ------- | ------- | -------- | ---------- | ---------- | ------ |
-| `test_chunked_pretokenization_benchmark[10-~/.../TinyStoriesV2-GPT4-train.txt]` | 0.2698  | 0.4124  | 0.3128   | 0.5936     | 0.2860     | 3.1967 |
+| `test_chunked_pretokenization_benchmark[10-~/.../TinyStoriesV2-GPT4-valid.txt]` | 0.2698  | 0.4124  | 0.3128   | 0.5936     | 0.2860     | 3.1967 |
 
 #### Merging
 
@@ -79,7 +79,13 @@ With the multi-byte -> single-byte pretokenization fix, we get down to 4m14s.
 At this point, slightly less than two minutes are spent on pretokenization or merging.
 
 Further optimization of merging likely require a rewrite to use double linked list.
-Further optimization of pretokenization likely requires a rewrite to a native language with better multithreading.
+
+~~Further optimization of pretokenization likely requires a rewrite to a native language with better multithreading.~~
+Looking at system performance, I noticed that only two cpu cores were used at 100%.
+This was likely the result of spawning threads in the regex matcher (concurrent=True) for multiple spawned process.
+Setting concurrent to False, pretokenization time is further decreased. Down from 28s to 20s. It may not matter much for this dataset but it did matter for owt_train.txt.
+
+The main bottleneck is now clearly merging.
 
 ## Assignment Questions
 
