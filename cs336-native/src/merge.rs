@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::vec;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, IntoPyObject, FromPyObject)]
-struct Pair(Vec<u8>, Vec<u8>);
+pub struct Pair(Vec<u8>, Vec<u8>);
 
 type Pretoken = Vec<Vec<u8>>;
 type Pretokens = BTreeMap<Pretoken, isize>;
