@@ -63,6 +63,7 @@ dev = [
     "pytest-benchmark>=5.2.0",
     "ruff>=0.14.3",
     "scalene>=1.5.55",
+    "types-regex>=2025.11.3.20251106",
 ]
 docs = [
     "mkdocs>=1.5.0",

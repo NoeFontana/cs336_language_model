@@ -29,7 +29,7 @@ format-check: ## Check code formatting
 	uv run ruff format --check
 
 type-check: ## Run type checking
-	uv run pyright
+	uv run ty check
 
 check: lint format-check type-check test ## Run all checks (lint, format, type-check, test)
 
