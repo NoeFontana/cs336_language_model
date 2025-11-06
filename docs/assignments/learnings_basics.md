@@ -73,19 +73,14 @@ With all that, we get to 6min on TinyStoriesV2-GPT4-train.txt.
 
 The bottleneck remains the tokenization implementation.
 
-By applying the regex on byte, we get down to 4m46s.
+Optimizations applied from there:
 
-With the multi-byte -> single-byte pretokenization fix, we get down to 4m14s.
-At this point, slightly less than two minutes are spent on pretokenization or merging.
+- Matching the regex on bytes
+- Representing pretoken as single byte (storing utf-8 token as multi-bytes was a mistake)
+- Changing the regex matcher to concurrent=False to limit conflicts with multi-processing
+- Token interning + HashMap for merging
 
-Further optimization of merging likely require a rewrite to use double linked list.
-
-~~Further optimization of pretokenization likely requires a rewrite to a native language with better multithreading.~~
-Looking at system performance, I noticed that only two cpu cores were used at 100%.
-This was likely the result of spawning threads in the regex matcher (concurrent=True) for multiple spawned process.
-Setting concurrent to False, pretokenization time is further decreased. Down from 28s to 20s. It may not matter much for this dataset but it did matter for owt_train.txt.
-
-The main bottleneck is now clearly merging.
+Now sub 1 min for TinyStoriesV2-GPT4-train.txt on a laptop.
 
 ## Assignment Questions
 
