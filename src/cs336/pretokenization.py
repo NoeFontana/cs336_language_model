@@ -5,11 +5,9 @@ from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial, reduce
 from pathlib import Path
-from typing import BinaryIO, Final
+from typing import BinaryIO
 
 import regex as re
-
-BYTE_CACHE: Final = [i.to_bytes(1) for i in range(256)]
 
 
 def find_chunk_boundaries(
@@ -64,55 +62,36 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-def split_on_special_tokens(corpus: str, special_tokens: list[str]) -> list[str]:
-    """Splits a text corpus by a list of special tokens.
-
-    The special tokens act as delimiters and are removed from the output. This is
-    used to isolate segments of text that do not contain any special tokens.
-
-    Args:
-        corpus: The input string to be split.
-        special_tokens: A list of strings (e.g., ["<|endoftext|>"]) to use as
-            delimiters for splitting the corpus.
-
-    Returns:
-        A list of substrings. Empty strings resulting from the split are excluded.
-    """
-    pattern = r"|".join(re.escape(tok) for tok in special_tokens)
-    split_corpus = re.split(pattern, corpus, concurrent=False)
-    return [s for s in split_corpus if s]
-
-
-def pretokenization(
-    split_corpus: list[str],
-    pattern: str = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""",
+def _batch_count_from_segment(
+    segment: memoryview, compiled_pretoken_pattern: re.Pattern, batch_size: int = 50_000
 ) -> Counter[bytes]:
-    """Performs pre-tokenization on text segments and counts token occurrences.
-
-    This function applies a regex pattern to break down text into "pre-tokens",
-    which are the smallest units before BPE merging begins. It then counts the
-    frequency of each unique pre-token sequence.
-
-    Args:
-        split_corpus: A list of strings, typically the output of `split_on_special_tokens`.
-        pattern: The regex pattern used to find pre-tokens. Defaults to the GPT-2 pattern.
-
-    Returns:
-        A dictionary mapping each unique pre-token (represented as a tuple of its
-        constituent bytes) to its frequency count across the corpus.
     """
-
-    compiled_pattern = re.compile(pattern.encode("utf-8"))
+    Efficiently counts pretokens from a memoryview segment in batches.
+    """
+    if not segment:
+        return Counter()
 
     occurences: Counter[bytes] = Counter()
-    for corpus in split_corpus:
-        corpus_bytes = corpus.encode("utf-8")
-        scanner = compiled_pattern.finditer(string=corpus_bytes, concurrent=False)
-        occurences.update(match_g.group() for match_g in scanner)
+    batch = []
+
+    scanner = compiled_pretoken_pattern.finditer(string=segment, concurrent=False)
+
+    for match_g in scanner:
+        batch.append(match_g.group())
+
+        if len(batch) >= batch_size:
+            occurences.update(batch)
+            batch.clear()
+
+    if batch:
+        occurences.update(batch)
+
     return occurences
 
 
-def process_chunk(chunk_range: tuple[int, int], file_path: str, special_tokens: list[str]) -> Counter[bytes]:
+def process_chunk(
+    chunk_range: tuple[int, int], file_path: str, special_tokens_pattern: bytes, compiled_pretoken_pattern: re.Pattern
+) -> Counter[bytes]:
     """Processes a single file chunk for parallel pre-tokenization.
 
     This worker function is designed to be called by a `ProcessPoolExecutor`. It
@@ -122,7 +101,8 @@ def process_chunk(chunk_range: tuple[int, int], file_path: str, special_tokens: 
     Args:
         chunk_range: A tuple `(start, end)` indicating the byte offsets for the chunk.
         file_path: The path to the file from which the chunk will be read.
-        special_tokens: A list of special tokens used for splitting the text.
+        special_tokens_pattern: The regex byte pattern for splitting on special tokens.
+        compiled_pretoken_pattern: The compiled regex pattern for pre-tokenization.
 
     Returns:
         A dictionary of pre-token counts for the processed chunk.
@@ -133,13 +113,27 @@ def process_chunk(chunk_range: tuple[int, int], file_path: str, special_tokens: 
     if chunk_size == 0:
         return Counter()
 
-    with open(file_path, "rb") as f:
-        f.seek(start)
-        data = f.read(chunk_size).decode("utf-8", errors="ignore")
-        split_data = split_on_special_tokens(corpus=data, special_tokens=special_tokens)
-        pretokens = pretokenization(split_data)
+    pretokens: Counter[bytes] = Counter()
+    with open(file_path, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+        mm.madvise(mmap.MADV_SEQUENTIAL)
+        chunk_data = memoryview(mm)[start:end]
 
-        return pretokens
+        last_end = 0
+        for special_match in re.finditer(special_tokens_pattern, chunk_data, concurrent=False, flags=re.V1):
+            corpus_segment = chunk_data[last_end : special_match.start()]
+
+            pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern, 100_000))
+            last_end = special_match.end()
+            del special_match
+            del corpus_segment
+
+        corpus_segment = chunk_data[last_end:]
+        if corpus_segment:
+            pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern, 100_000))
+
+        del corpus_segment
+        del chunk_data
+    return pretokens
 
 
 def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_chunks: int) -> Counter[bytes]:
@@ -162,6 +156,13 @@ def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_ch
     with Path(corpus_path).open("rb") as f:
         chunk_boundaries = find_chunk_boundaries(f, desired_num_chunks=num_chunks, split_special_token=b"<|endoftext|>")
 
+    special_tokens_bytes = [tok.encode("utf-8") for tok in special_tokens]
+    special_tokens_pattern = b"|".join(re.escape(tok) for tok in special_tokens_bytes)
+
+    # Compile the pre-tokenization pattern once in the main process.
+    pretoken_pattern_str = rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    compiled_pretoken_pattern = re.compile(pretoken_pattern_str, flags=re.V1)
+
     # Recompute num_chunks in case, find_chunk_boundaries returned less chunks than desired.
     # This may happen when some boundaries are merged due to low density of tokens.
     num_chunks = len(chunk_boundaries) - 1
@@ -169,7 +170,12 @@ def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_ch
     logging.getLogger(__name__).info(f"Chunk boundaries: {chunk_boundaries}")
 
     with ProcessPoolExecutor(max_workers=num_chunks) as executor:
-        worker_func = partial(process_chunk, file_path=corpus_path.as_posix(), special_tokens=special_tokens)
+        worker_func = partial(
+            process_chunk,
+            file_path=corpus_path.as_posix(),
+            special_tokens_pattern=special_tokens_pattern,
+            compiled_pretoken_pattern=compiled_pretoken_pattern,
+        )
         chunk_ranges = [(chunk_boundaries[i], chunk_boundaries[i + 1]) for i in range(num_chunks)]
         futures = [executor.submit(worker_func, chunk_range) for chunk_range in chunk_ranges]
 

@@ -81,6 +81,9 @@ Optimizations applied from there:
 - Token interning + HashMap for merging
 
 Now sub 1 min for TinyStoriesV2-GPT4-train.txt on a laptop.
+But this is too expensive in terms of memory on my laptop.
+Moving to mmap+memory_view so the required RAM remains below my laptop's spec. With current tuning this results in a 2x slowdown for pretokenization on TinyStoriesV2-GPT4-train. We remain sub 2min for tokenization.
+Using mmap+memory_view, we can now pre-tokenize owt_train without going out-of-memory.
 
 ## Assignment Questions
 
