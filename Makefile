@@ -73,6 +73,6 @@ profile-tokenization: ## Profile the BPE tokenizer training script
 		--cpu --web --profile-exclude threading.py \
 		--- \
 		src/cs336/train_bpe.py \
-		--vocab-size 10000 \
-		--input-path ~/datasets/cs336/TinyStoriesV2-GPT4-train.txt \
-		--output-prefix ./results/profile
+		--vocab-size 32000 \
+		--input-path ~/datasets/cs336/owt_train.txt \
+		--output-prefix ./owt
