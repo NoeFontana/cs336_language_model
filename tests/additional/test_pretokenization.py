@@ -20,9 +20,11 @@ def test_chunked_pretokenization_benchmark(benchmark: BenchmarkFixture, dataset:
 
     special_tokens = ["<|endoftext|>"]
 
+    # Using benchmark.pedantic to have explicit control over the number of runs.
+    # This is useful for long-running functions to keep test execution time in check.
     result = benchmark.pedantic(
         chunked_pretokenization,
-        kwargs={"corpus_path": corpus_path, "special_tokens": special_tokens, "num_chunks": 10},
+        kwargs={"corpus_path": corpus_path, "special_tokens": special_tokens, "max_workers": 4},
         rounds=3,
         iterations=1,
     )

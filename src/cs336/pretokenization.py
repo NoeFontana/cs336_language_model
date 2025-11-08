@@ -122,7 +122,12 @@ def process_chunk(
     return pretokens
 
 
-def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_chunks: int) -> Counter[bytes]:
+def chunked_pretokenization(
+    corpus_path: Path,
+    special_tokens: list[str],
+    max_workers: int | None = None,
+    num_chunks_per_worker: int = 2,
+) -> Counter[bytes]:
     """Performs pre-tokenization on a large file in parallel.
 
     This function orchestrates the pre-tokenization of a large corpus by first
@@ -132,15 +137,26 @@ def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_ch
     Args:
         corpus_path: The path to the text file to be tokenized.
         special_tokens: A list of special tokens to be handled during splitting.
-        num_chunks: The desired number of chunks to split the file into for
-            parallel processing.
+        max_workers: The maximum number of worker processes to use. If None, it
+            defaults to the number of available CPU cores.
+        num_chunks_per_worker: The number of chunks to create per worker.
+            Having more chunks than workers can improve load balancing.
 
     Returns:
         A dictionary mapping each unique pre-token to its total frequency count
         across the entire corpus.
     """
+    cpu_count = os.cpu_count() or 1
+    if max_workers is None:
+        max_workers = cpu_count
+    else:
+        max_workers = min(max_workers, cpu_count)
+
+    num_chunks = max_workers * num_chunks_per_worker
+
     with Path(corpus_path).open("rb") as f:
         chunk_boundaries = find_chunk_boundaries(f, desired_num_chunks=num_chunks, split_special_token=b"<|endoftext|>")
+        actual_num_chunks = len(chunk_boundaries) - 1
 
     special_tokens_pattern = re.compile(
         b"|".join(re.escape(tok) for tok in [tok.encode("utf-8") for tok in special_tokens]), flags=re.V1
@@ -150,20 +166,17 @@ def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_ch
     pretoken_pattern_str = rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     compiled_pretoken_pattern = re.compile(pretoken_pattern_str, flags=re.V1)
 
-    # Recompute num_chunks in case, find_chunk_boundaries returned less chunks than desired.
-    # This may happen when some boundaries are merged due to low density of tokens.
-    num_chunks = len(chunk_boundaries) - 1
-
+    logging.getLogger(__name__).info(f"Using {max_workers} workers and {actual_num_chunks} chunks.")
     logging.getLogger(__name__).info(f"Chunk boundaries: {chunk_boundaries}")
 
-    with ProcessPoolExecutor(max_workers=num_chunks) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         worker_func = partial(
             process_chunk,
             file_path=corpus_path.as_posix(),
             special_tokens_pattern=special_tokens_pattern,
             compiled_pretoken_pattern=compiled_pretoken_pattern,
         )
-        chunk_ranges = [(chunk_boundaries[i], chunk_boundaries[i + 1]) for i in range(num_chunks)]
+        chunk_ranges = [(chunk_boundaries[i], chunk_boundaries[i + 1]) for i in range(actual_num_chunks)]
         futures = [executor.submit(worker_func, chunk_range) for chunk_range in chunk_ranges]
 
         # Use reduce with Counter addition for a concise and efficient aggregation.
