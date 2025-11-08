@@ -1,4 +1,6 @@
 import argparse
+import base64
+import json
 import logging
 from pathlib import Path
 
@@ -52,20 +54,24 @@ def main() -> None:
 
     if args.output_prefix is not None:
         output_prefix: str = args.output_prefix
-        vocab_path = Path(f"{output_prefix}.vocab")
-        merges_path = Path(f"{output_prefix}.merges")
+        output_path = Path(f"{output_prefix}.json")
 
-        # Save vocab
-        with vocab_path.open("wb") as f_vocab:
-            for token_id, token_bytes in vocab.items():
-                f_vocab.write(f"{token_id}\t{token_bytes!r}\n".encode())
-        logger.info(f"Saved vocab to {vocab_path}")
+        # Prepare data for JSON serialization
+        serializable_vocab = {
+            token_id: base64.b64encode(token_bytes).decode("ascii") for token_id, token_bytes in vocab.items()
+        }
+        serializable_merges = [
+            (base64.b64encode(p1).decode("ascii"), base64.b64encode(p2).decode("ascii")) for p1, p2 in merges
+        ]
 
-        # Save merges
-        with merges_path.open("wb") as f_merges:
-            for pair in merges:
-                f_merges.write(f"{pair[0]!r}\t{pair[1]!r}\n".encode())
-        logger.info(f"Saved merges to {merges_path}")
+        data_to_save = {
+            "vocab": serializable_vocab,
+            "merges": serializable_merges,
+        }
+
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(data_to_save, f, indent=2)
+        logger.info(f"Saved vocab and merges to {output_path}")
 
 
 if __name__ == "__main__":
