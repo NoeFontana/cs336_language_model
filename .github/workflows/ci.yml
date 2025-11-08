@@ -13,7 +13,6 @@ concurrency:
 
 jobs:
   test:
-    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -36,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --group test
 
+      - name: Build and Install
+        run: CARGO_BUILD_FLAGS="--release" uv pip install -e .
+
       - name: Run ruff check
         run: uv run ruff check --output-format=github
 
@@ -43,10 +45,10 @@ jobs:
         run: uv run ruff format --check
 
       - name: Run type checking with pyright
-        run: uv run pyright
+        run: uv run ty check
 
       - name: Run tests with coverage
-        run: uv run pytest
+        run: USE_NATIVE_MERGE=1 uv run pytest
 
   build-docs:
     runs-on: ubuntu-latest
