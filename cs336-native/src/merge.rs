@@ -17,7 +17,6 @@ struct Node {
 
 #[derive(Debug, Clone)]
 struct PretokenList {
-    head: Option<usize>,
     tail: Option<usize>,
     freq: isize,
 }
@@ -125,7 +124,6 @@ pub fn merge(
         }
 
         pretoken_lists.push(PretokenList {
-            head: first_node_idx,
             tail: prev_node_idx,
             freq,
         });
