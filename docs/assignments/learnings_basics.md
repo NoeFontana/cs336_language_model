@@ -89,7 +89,7 @@ Training time on owt_train.txt is about 12h so we still need to optimize that.
 
 Back to optimizing, now with merging, the main data structures optimizations are using linked-list for O(1) pre-token merging, BTreeSet for Log(n_pretoken) max-heap lookup and arena for storing nodes.
 
-With these optimizations, merging is about 0.35s on TinyStoriesV2-GPT4-train and 40s on owt-train.
+With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 40s on owt-train.
 
 ## Assignment Questions
 
