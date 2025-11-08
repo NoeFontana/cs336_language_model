@@ -100,8 +100,7 @@ pub fn merge(
         }
         let list_idx = pretoken_lists.len();
         let mut prev_node_idx: Option<usize> = None;
-        let mut first_node_idx: Option<usize> = None;
-        for (i, &byte) in word_bytes.iter().enumerate() {
+        for &byte in word_bytes.iter() {
             let token_id = byte_to_id_map[byte as usize];
             let node_idx = arena.len();
 
@@ -116,9 +115,6 @@ pub fn merge(
                 let pair = Pair(arena[prev_idx].token_id, token_id);
                 *occurences.entry(pair).or_insert(0) += freq;
                 pair_map.entry(pair).or_default().insert(prev_idx);
-            }
-            if i == 0 {
-                first_node_idx = Some(node_idx);
             }
             prev_node_idx = Some(node_idx);
         }
