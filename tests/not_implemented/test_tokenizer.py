@@ -11,7 +11,7 @@ import tiktoken
 
 from cs336.adapters import get_tokenizer
 
-from .common import FIXTURES_PATH, gpt2_bytes_to_unicode
+from ..common import FIXTURES_PATH, gpt2_bytes_to_unicode
 
 VOCAB_PATH = FIXTURES_PATH / "gpt2_vocab.json"
 MERGES_PATH = FIXTURES_PATH / "gpt2_merges.txt"

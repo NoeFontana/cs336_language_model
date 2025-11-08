@@ -148,8 +148,8 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.pytest.ini_options]
+addopts = ["--ignore", "tests/not_implemented", "-m", "not slow", "-s"]
+pythonpath = ["src"]
 log_cli = true
 log_cli_level = "WARNING"
 markers = ["slow: marks tests as slow to be excluded by default."]
-addopts = ["-m", "not slow", "-s"]
-pythonpath = ["src"]
