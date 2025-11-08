@@ -20,11 +20,11 @@ def test_chunked_pretokenization_benchmark(benchmark: BenchmarkFixture, dataset:
 
     special_tokens = ["<|endoftext|>"]
 
-    result = benchmark(
+    result = benchmark.pedantic(
         chunked_pretokenization,
-        corpus_path=corpus_path,
-        special_tokens=special_tokens,
-        num_chunks=10,
+        kwargs={"corpus_path": corpus_path, "special_tokens": special_tokens, "num_chunks": 10},
+        rounds=3,
+        iterations=1,
     )
 
     assert result is not None, "chunked_pretokenization returned None"
