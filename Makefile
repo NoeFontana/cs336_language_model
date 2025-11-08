@@ -11,10 +11,10 @@ build-native:
 	CARGO_BUILD_FLAGS="--release" uv pip install -e .
 
 test: ## Run tests
-	uv run pytest
+	USE_NATIVE_MERGE=1 uv run pytest
 
 test-cov: ## Run tests with coverage report
-	uv run pytest --cov --cov-report=html --cov-report=term
+	USE_NATIVE_MERGE=1 uv run pytest --cov --cov-report=html --cov-report=term
 
 lint: ## Run linting checks
 	uv run ruff check  --fix
