@@ -609,7 +609,7 @@ def run_train_bpe(
 
     vocab = vocab_init(256, special_tokens)
 
-    pretokens = chunked_pretokenization(corpus_path=Path(input_path), special_tokens=special_tokens, num_chunks=10)
+    pretokens = chunked_pretokenization(corpus_path=Path(input_path), special_tokens=special_tokens)
     logger.info(f"Got {len(pretokens)} pretokens")
     vocab, merges = merge(pretokens, vocab, vocab_size)
     logger.info("Succesfully trained BPE tokenizer")
