@@ -62,31 +62,14 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-def _batch_count_from_segment(
-    segment: memoryview, compiled_pretoken_pattern: re.Pattern, batch_size: int = 50_000
-) -> Counter[bytes]:
+def _batch_count_from_segment(segment: memoryview, compiled_pretoken_pattern: re.Pattern) -> Counter[bytes]:
     """
     Efficiently counts pretokens from a memoryview segment in batches.
     """
     if not segment:
         return Counter()
 
-    occurences: Counter[bytes] = Counter()
-    batch = []
-
-    scanner = compiled_pretoken_pattern.finditer(string=segment, concurrent=False)
-
-    for match_g in scanner:
-        batch.append(match_g.group())
-
-        if len(batch) >= batch_size:
-            occurences.update(batch)
-            batch.clear()
-
-    if batch:
-        occurences.update(batch)
-
-    return occurences
+    return Counter(match.group() for match in compiled_pretoken_pattern.finditer(string=segment, concurrent=False))
 
 
 def process_chunk(
@@ -125,14 +108,14 @@ def process_chunk(
         for special_match in re.finditer(special_tokens_pattern, chunk_data, concurrent=False):
             corpus_segment = chunk_data[last_end : special_match.start()]
 
-            pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern, 100_000))
+            pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern))
             last_end = special_match.end()
             del special_match
             del corpus_segment
 
         corpus_segment = chunk_data[last_end:]
         if corpus_segment:
-            pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern, 100_000))
+            pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern))
 
         del corpus_segment
         del chunk_data
