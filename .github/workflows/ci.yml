@@ -34,7 +34,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: CARGO_BUILD_FLAGS="--release" uv sync --group dev
 
       - name: Build and Install
         run: CARGO_BUILD_FLAGS="--release" uv pip install -e .
