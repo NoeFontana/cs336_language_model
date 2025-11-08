@@ -90,7 +90,10 @@ def _batch_count_from_segment(
 
 
 def process_chunk(
-    chunk_range: tuple[int, int], file_path: str, special_tokens_pattern: bytes, compiled_pretoken_pattern: re.Pattern
+    chunk_range: tuple[int, int],
+    file_path: str,
+    special_tokens_pattern: re.Pattern,
+    compiled_pretoken_pattern: re.Pattern,
 ) -> Counter[bytes]:
     """Processes a single file chunk for parallel pre-tokenization.
 
@@ -119,7 +122,7 @@ def process_chunk(
         chunk_data = memoryview(mm)[start:end]
 
         last_end = 0
-        for special_match in re.finditer(special_tokens_pattern, chunk_data, concurrent=False, flags=re.V1):
+        for special_match in re.finditer(special_tokens_pattern, chunk_data, concurrent=False):
             corpus_segment = chunk_data[last_end : special_match.start()]
 
             pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern, 100_000))
@@ -156,8 +159,9 @@ def chunked_pretokenization(corpus_path: Path, special_tokens: list[str], num_ch
     with Path(corpus_path).open("rb") as f:
         chunk_boundaries = find_chunk_boundaries(f, desired_num_chunks=num_chunks, split_special_token=b"<|endoftext|>")
 
-    special_tokens_bytes = [tok.encode("utf-8") for tok in special_tokens]
-    special_tokens_pattern = b"|".join(re.escape(tok) for tok in special_tokens_bytes)
+    special_tokens_pattern = re.compile(
+        b"|".join(re.escape(tok) for tok in [tok.encode("utf-8") for tok in special_tokens]), flags=re.V1
+    )
 
     # Compile the pre-tokenization pattern once in the main process.
     pretoken_pattern_str = rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
