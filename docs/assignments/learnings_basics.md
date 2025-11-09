@@ -1,10 +1,10 @@
 # Learnings
 
-My learnings from the assignment.
+My learnings and answers from the assignment.
 
 Note: Timings are done on a laptop. While the statistics are gathered over 5+ runs, this remains non-reliable due to hardware limitations.
 
-## High-level learnings
+## Personal Learnings
 
 ### Optimizing BPE
 

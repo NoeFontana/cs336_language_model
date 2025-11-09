@@ -59,8 +59,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Assignments:
-    - "CS336 Basics":
-      - "Learnings": "assignments/learnings_basics.md"
+      - "CS336 Basics": "assignments/learnings_basics.md"
   - Development:
     - "API Reference": "development/reference.md"
 
