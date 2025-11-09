@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 
@@ -47,6 +48,32 @@ def test_from_files(tmp_path: Path):
 
     assert tokenizer.vocab == expected_vocab
     assert tokenizer.merges == expected_merges
+    assert tokenizer.special_tokens == special_tokens
+
+
+def test_from_files_single_json(tmp_path: Path):
+    vocab = {0: b"a", 1: b"b"}
+    merges = [(b"a", b"b")]
+    special_tokens = ["<|endoftext|>"]
+
+    serializable_vocab = {
+        token_id: base64.b64encode(token_bytes).decode("ascii") for token_id, token_bytes in vocab.items()
+    }
+    serializable_merges = [
+        (base64.b64encode(p1).decode("ascii"), base64.b64encode(p2).decode("ascii")) for p1, p2 in merges
+    ]
+
+    data_to_save = {"vocab": serializable_vocab, "merges": serializable_merges}
+
+    tokenizer_file = tmp_path / "tokenizer.json"
+    with open(tokenizer_file, "w") as f:
+        json.dump(data_to_save, f)
+
+    tokenizer = Tokenizer.from_files(str(tokenizer_file), None, special_tokens)
+
+    expected_vocab = {0: b"a", 1: b"b", 2: b"<|endoftext|>"}
+    assert tokenizer.vocab == expected_vocab
+    assert tokenizer.merges == merges
     assert tokenizer.special_tokens == special_tokens
 
 
