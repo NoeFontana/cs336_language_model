@@ -76,3 +76,6 @@ profile-tokenization: ## Profile the BPE tokenizer training script
 		--vocab-size 32000 \
 		--input-path ~/datasets/cs336/owt_train.txt \
 		--output-prefix ./owt
+
+tokenize-dataset: ## Tokenize the default dataset using the default tokenizer
+	PYTHONPATH=src uv run src/cs336/scripts/tokenize_dataset.py
