@@ -158,8 +158,11 @@ def chunked_pretokenization(
         chunk_boundaries = find_chunk_boundaries(f, desired_num_chunks=num_chunks, split_special_token=b"<|endoftext|>")
         actual_num_chunks = len(chunk_boundaries) - 1
 
+    # We sort by decreasing length to be compatible with overlapping patterns.
+    # E.g. if we have specials tokens <a>, <b> and <a><b>, we want the last one to match text<a><b>text
     special_tokens_pattern = re.compile(
-        b"|".join(re.escape(tok) for tok in [tok.encode("utf-8") for tok in special_tokens]), flags=re.V1
+        b"|".join(re.escape(tok.encode("utf-8")) for tok in sorted(special_tokens, key=len, reverse=True)),
+        flags=re.V1,
     )
 
     # Compile the pre-tokenization pattern once in the main process.
