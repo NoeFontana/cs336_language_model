@@ -117,3 +117,22 @@ With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 
     `b'\xc3\x41'` is such a sequence. While the first byte is valid, the second byte is invalid as its binary form highest order bits don't match `10`.
 
 <!-- prettier-ignore-end -->
+
+### tokenizer_experiments
+
+<!-- prettier-ignore-start -->
+??? question "What is each tokenizer’s compression ratio (bytes/token)?"
+    - TinyStories tokenizer on TinyStories data: 4.11 bytes/token
+    - OpenWebText tokenizer on OpenWebText data: 4.34 bytes/token
+
+??? question "What happens if you tokenize your OpenWebText sample with the TinyStories tokenizer? Compare the compression ratio and/or qualitatively describe what happens."
+    When tokenizing the OpenWebText sample with the TinyStories tokenizer, the compression ratio is 3.26 bytes/token which is lower than the 4.34 bytes/token of the OpenWebText tokenizer on its own data, indicating less efficient encoding for out-of-domain text. The TinyStories tokenizer, trained on a a smaller and different corpus, and with a smaller vocabulary size, breaks down the more diverse OpenWebText into more numerous, smaller tokens.
+
+??? question "Estimate the throughput of your tokenizer (e.g., in bytes/second). How long would it take to tokenize the Pile dataset (825GB of text)?"
+    Measuring the performance of our owt trained tokenizer on owt_valid.txt, we obtain a throughput of 1.2 MB/s.
+    Our current (slow) implementation complexity is linear with regards to the dataset size, we can thus extrapolate it would take 8.24 days to tokenize the Pile dataset.
+
+??? question "We recommend serializing the token IDs as a NumPy array of datatype uint16. Why is uint16 an appropriate choice?"
+    Our largest vocabulary contains 32000 positive token ids and uint16 allows to represent up to 65536 positive integers.
+
+<!-- prettier-ignore-end -->
