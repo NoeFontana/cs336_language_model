@@ -11,6 +11,7 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
+from cs336.layer.linear import Linear
 from cs336.merge import merge
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
@@ -26,16 +27,17 @@ def run_linear(
     Given the weights of a Linear layer, compute the transformation of a batched input.
 
     Args:
-        in_dim (int): The size of the input dimension
-        out_dim (int): The size of the output dimension
+        d_in (int): The size of the input dimension
+        d_out (int): The size of the output dimension
         weights (Float[Tensor, "d_out d_in"]): The linear weights to use
         in_features (Float[Tensor, "... d_in"]): The output tensor to apply the function to
 
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
-
-    raise NotImplementedError
+    linear = Linear(d_in, d_out)
+    linear.load_state_dict({"weights": weights})
+    return linear(in_features)
 
 
 def run_embedding(
