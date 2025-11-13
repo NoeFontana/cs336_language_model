@@ -61,7 +61,7 @@ def run_embedding(
     """
     embedding = Embedding(vocab_size, d_model)
     embedding.load_state_dict({"embedding_matrix": weights})
-    return embedding.forward(token_ids)
+    return embedding(token_ids)
 
 
 def run_swiglu(
