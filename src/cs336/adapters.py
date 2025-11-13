@@ -13,6 +13,7 @@ from torch import Tensor
 
 from cs336.layer.embedding import Embedding
 from cs336.layer.linear import Linear
+from cs336.layer.transformer import RMSNorm
 from cs336.merge import merge
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
@@ -391,7 +392,9 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    raise NotImplementedError
+    norm = RMSNorm(d_model, eps)
+    norm.load_state_dict({"gain": weights})
+    return norm(in_features)
 
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
