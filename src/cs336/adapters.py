@@ -13,7 +13,7 @@ from torch import Tensor
 
 from cs336.layer.embedding import Embedding
 from cs336.layer.linear import Linear
-from cs336.layer.transformer import RMSNorm
+from cs336.layer.transformer import FeedForward, RMSNorm
 from cs336.merge import merge
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
@@ -87,14 +87,9 @@ def run_swiglu(
     Returns:
         Float[Tensor, "... d_model"]: Output embeddings of the same shape as the input embeddings.
     """
-    # Example:
-    # If your state dict keys match, you can use `load_state_dict()`
-    # swiglu.load_state_dict(weights)
-    # You can also manually assign the weights
-    # swiglu.w1.weight.data = w1_weight
-    # swiglu.w2.weight.data = w2_weight
-    # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    ff = FeedForward(d_model, d_ff)
+    ff.load_state_dict({"w1.weights": w1_weight, "w2.weights": w2_weight, "w3.weights": w3_weight})
+    return ff(in_features)
 
 
 def run_scaled_dot_product_attention(
