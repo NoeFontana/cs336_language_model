@@ -129,3 +129,8 @@ class RotaryPositionalEmbedding(nn.Module):
         x_rotated_complex = x_complex * freqs_cos_isine
 
         return torch.view_as_real(x_rotated_complex).view(x.shape)
+
+
+def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
+    x = torch.exp(x - x.amax(dim=dim, keepdim=True))
+    return x / torch.sum(x, dim=dim, keepdim=True)
