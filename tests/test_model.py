@@ -115,7 +115,6 @@ def test_multihead_self_attention_with_rope(
     numpy_snapshot.assert_match(actual_output, atol=1e-6)
 
 
-@pytest.mark.skip("Not Implemented")
 def test_transformer_lm(
     numpy_snapshot, vocab_size, n_keys, d_model, n_layers, n_heads, d_ff, theta, ts_state_dict, in_indices
 ):
@@ -135,7 +134,6 @@ def test_transformer_lm(
     numpy_snapshot.assert_match(actual_output, atol=1e-4, rtol=1e-2)
 
 
-@pytest.mark.skip("Not Implemented")
 def test_transformer_lm_truncated_input(
     numpy_snapshot, vocab_size, n_keys, d_model, n_layers, n_heads, d_ff, theta, ts_state_dict, in_indices
 ):
