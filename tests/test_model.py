@@ -158,7 +158,6 @@ def test_transformer_lm_truncated_input(
     )
 
 
-@pytest.mark.skip("Not Implemented")
 def test_transformer_block(numpy_snapshot, ts_state_dict, in_embeddings, d_model, n_heads, d_ff, n_keys, theta):
     block_weights = {k.replace("layers.0.", ""): v for k, v in ts_state_dict[0].items() if "layers.0." in k}
 
