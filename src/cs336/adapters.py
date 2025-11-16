@@ -14,6 +14,7 @@ from torch import Tensor
 from cs336.layer.embedding import Embedding
 from cs336.layer.linear import Linear
 from cs336.layer.transformer import (
+    MHSA,
     FeedForward,
     RMSNorm,
     RotaryPositionalEmbedding,
@@ -151,7 +152,16 @@ def run_multihead_self_attention(
             batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mhsa = MHSA(d_model, num_heads, max_seq_len=256)
+
+    mhsa.load_state_dict(
+        {
+            "qkv_proj.weights": torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=0),
+            "out_proj.weights": o_proj_weight,
+        }
+    )
+
+    return mhsa(in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -192,7 +202,15 @@ def run_multihead_self_attention_with_rope(
             batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mhsa = MHSA(d_model, num_heads, max_seq_len=max_seq_len, theta=theta)
+    mhsa.load_state_dict(
+        {
+            "qkv_proj.weights": torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=0),
+            "out_proj.weights": o_proj_weight,
+        }
+    )
+
+    return mhsa(in_features, token_positions)
 
 
 def run_rope(
