@@ -76,8 +76,56 @@ class FeedForward(nn.Module):
         Returns:
             The output tensor of shape (..., d_model).
         """
-
         silu_in = self.w1(x)
         silu = silu_in * torch.sigmoid(silu_in)
         swiglu = silu * self.w3(x)
         return self.w2(swiglu)
+
+
+class RotaryPositionalEmbedding(nn.Module):
+    """Implements Rotary Positional Embeddings (RoPE).
+
+    See: https://arxiv.org/abs/2104.09864
+    """
+
+    def __init__(self, theta: float, d_k: int, max_seq_len: int, device: torch.device | None = None) -> None:
+        """Initializes the RotaryPositionalEmbedding layer.
+
+        Args:
+            theta: The base for the geometric progression of frequencies. A common
+                value is 10000.0.
+            d_k: The dimensionality of the query/key vectors. Must be even.
+            max_seq_len: The maximum sequence length for which to pre-compute
+                the rotary embeddings.
+            device: The device to create the buffer on.
+        """
+        super().__init__()
+
+        positions = torch.arange(max_seq_len + 1, device=device)
+        exponents = torch.arange(0, d_k, step=2, device=device) / d_k
+        thetas_k = 1 / torch.pow(theta, exponents)
+
+        freqs = torch.outer(positions, thetas_k)
+        freqs_cos_isine = torch.polar(torch.ones_like(freqs), freqs)
+
+        self.freqs_cos_isine: torch.Tensor
+        self.register_buffer("freqs_cos_isine", freqs_cos_isine, persistent=False)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+        """Applies rotary positional embeddings to the input tensor.
+
+        Args:
+            x: The input tensor (queries or keys) of shape (..., seq_len, d_k).
+            token_positions: A tensor of shape (..., seq_len) containing the
+                absolute positions of tokens in the sequence.
+
+        Returns:
+            The input tensor with rotary positional embeddings applied, with the
+            same shape as the input.
+        """
+        x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
+        freqs_cos_isine = self.freqs_cos_isine[token_positions]
+
+        x_rotated_complex = x_complex * freqs_cos_isine
+
+        return torch.view_as_real(x_rotated_complex).view(x.shape)
