@@ -75,7 +75,6 @@ def test_4d_scaled_dot_product_attention(numpy_snapshot, q, k, v, mask):
     )
 
 
-@pytest.mark.skip("Not Implemented")
 def test_multihead_self_attention(numpy_snapshot, in_embeddings, d_model, n_heads, ts_state_dict):
     d, _ = ts_state_dict
     q_proj_weight, k_proj_weight, v_proj_weight, o_proj_weight = [
@@ -93,7 +92,6 @@ def test_multihead_self_attention(numpy_snapshot, in_embeddings, d_model, n_head
     numpy_snapshot.assert_match(actual_output, atol=1e-6)
 
 
-@pytest.mark.skip("Not Implemented")
 def test_multihead_self_attention_with_rope(
     numpy_snapshot, in_embeddings, d_model, n_heads, ts_state_dict, n_keys, theta, pos_ids
 ):
