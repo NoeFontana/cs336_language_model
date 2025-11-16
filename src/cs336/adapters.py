@@ -25,6 +25,7 @@ from cs336.layer.transformer import (
 from cs336.merge import merge
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
+from cs336.transformer import TransformerLM
 
 
 def run_linear(
@@ -406,7 +407,39 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    transformer_lm = TransformerLM(
+        vocab_size=vocab_size,
+        num_layers=num_layers,
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        max_seq_len=context_length,
+        theta=rope_theta,
+    )
+
+    state_dict = {
+        "embedding.embedding_matrix": weights["token_embeddings.weight"],
+        "out_norm.gain": weights["ln_final.weight"],
+        "out_linear.weights": weights["lm_head.weight"],
+    }
+    for i in range(num_layers):
+        state_dict[f"transformer_blocks.{i}.attn.qkv_proj.weights"] = torch.cat(
+            [
+                weights[f"layers.{i}.attn.q_proj.weight"],
+                weights[f"layers.{i}.attn.k_proj.weight"],
+                weights[f"layers.{i}.attn.v_proj.weight"],
+            ],
+            dim=0,
+        )
+        state_dict[f"transformer_blocks.{i}.attn.out_proj.weights"] = weights[f"layers.{i}.attn.output_proj.weight"]
+        state_dict[f"transformer_blocks.{i}.ln1.gain"] = weights[f"layers.{i}.ln1.weight"]
+        state_dict[f"transformer_blocks.{i}.ffn.w1.weights"] = weights[f"layers.{i}.ffn.w1.weight"]
+        state_dict[f"transformer_blocks.{i}.ffn.w2.weights"] = weights[f"layers.{i}.ffn.w2.weight"]
+        state_dict[f"transformer_blocks.{i}.ffn.w3.weights"] = weights[f"layers.{i}.ffn.w3.weight"]
+        state_dict[f"transformer_blocks.{i}.ln2.gain"] = weights[f"layers.{i}.ln2.weight"]
+
+    transformer_lm.load_state_dict(state_dict)
+    return transformer_lm(in_indices)
 
 
 def run_rmsnorm(
