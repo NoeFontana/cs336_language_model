@@ -18,6 +18,7 @@ from cs336.layer.transformer import (
     FeedForward,
     RMSNorm,
     RotaryPositionalEmbedding,
+    TransformerBlock,
     scaled_dot_product_attention,
     softmax,
 )
@@ -307,7 +308,23 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    transformer = TransformerBlock(d_model, num_heads, d_ff, max_seq_len, theta)
+
+    transformer.load_state_dict(
+        {
+            "attn.qkv_proj.weights": torch.cat(
+                [weights["attn.q_proj.weight"], weights["attn.k_proj.weight"], weights["attn.v_proj.weight"]], dim=0
+            ),
+            "attn.out_proj.weights": weights["attn.output_proj.weight"],
+            "ln1.gain": weights["ln1.weight"],
+            "ffn.w1.weights": weights["ffn.w1.weight"],
+            "ffn.w2.weights": weights["ffn.w2.weight"],
+            "ffn.w3.weights": weights["ffn.w3.weight"],
+            "ln2.gain": weights["ln2.weight"],
+        }
+    )
+    token_positions = torch.arange(in_features.shape[1], device=in_features.device).unsqueeze(0)
+    return transformer(in_features, token_positions)
 
 
 def run_transformer_lm(
