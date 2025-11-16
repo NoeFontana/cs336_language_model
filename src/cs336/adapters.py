@@ -13,7 +13,7 @@ from torch import Tensor
 
 from cs336.layer.embedding import Embedding
 from cs336.layer.linear import Linear
-from cs336.layer.transformer import FeedForward, RMSNorm, RotaryPositionalEmbedding
+from cs336.layer.transformer import FeedForward, RMSNorm, RotaryPositionalEmbedding, softmax
 from cs336.merge import merge
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
@@ -443,7 +443,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    return softmax(in_features, dim=dim)
 
 
 def run_cross_entropy(
