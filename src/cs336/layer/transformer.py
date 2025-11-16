@@ -1,4 +1,5 @@
 import torch
+from einops import einsum
 from torch import nn
 
 from cs336.layer.linear import Linear
@@ -134,3 +135,32 @@ class RotaryPositionalEmbedding(nn.Module):
 def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
     x = torch.exp(x - x.amax(dim=dim, keepdim=True))
     return x / torch.sum(x, dim=dim, keepdim=True)
+
+
+def scaled_dot_product_attention(
+    q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, mask: torch.Tensor | None = None
+) -> torch.Tensor:
+    """
+    Computes the scaled dot product attention.
+
+    Args:
+        q: Query tensor of shape (..., q_len, d_k).
+        k: Key tensor of shape (..., kv_len, d_k).
+        v: Value tensor of shape (..., kv_len, d_v).
+        mask: Optional mask tensor of shape (..., seq_len, seq_len).
+            True is kept. False is masked out.
+
+
+    Returns:
+        The output tensor of shape (..., seq_len, d_v).
+
+    """
+    d_k = q.shape[-1]
+    scaling = d_k**-0.5
+    att: torch.Tensor = einsum(q, k, "... queries d_k, ... keys d_k -> ... queries keys") * scaling
+
+    if mask is not None:
+        att.masked_fill_(~mask, float("-inf"))
+
+    att = softmax(att, dim=-1)
+    return att @ v

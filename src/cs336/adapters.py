@@ -13,7 +13,13 @@ from torch import Tensor
 
 from cs336.layer.embedding import Embedding
 from cs336.layer.linear import Linear
-from cs336.layer.transformer import FeedForward, RMSNorm, RotaryPositionalEmbedding, softmax
+from cs336.layer.transformer import (
+    FeedForward,
+    RMSNorm,
+    RotaryPositionalEmbedding,
+    scaled_dot_product_attention,
+    softmax,
+)
 from cs336.merge import merge
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
@@ -110,7 +116,7 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    return scaled_dot_product_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
