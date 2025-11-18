@@ -136,3 +136,27 @@ With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 
     Our largest vocabulary contains 32000 positive token ids and uint16 allows to represent up to 65536 positive integers.
 
 <!-- prettier-ignore-end -->
+
+### transformer_accounting
+
+<!-- prettier-ignore-start -->
+
+??? question "Consider GPT-2 XL, which has the following configuration: vocab_size : 50,257, context_length : 1,024, num_layers : 48, d_model : 1,600, num_heads : 25, d_ff : 6,400. Suppose we constructed our model using this configuration. How many trainable parameters would our model have? Assuming each parameter is represented using single-precision floating point, how much memory is required to just load this model?"
+    Our model has 2,127,057,600 trainable parameters.
+    This is about 7.92 GiB of memory to load.
+
+??? question "Identify the matrix multiplies required to complete a forward pass of our GPT-2 XL-shaped model. How many FLOPs do these matrix multiplies require in total? Assume that our input sequence has context_length tokens."
+    We have matrix multiplies in the ffn, the mhsa projections, the sdpa and the final layer. In total this sums up to about 4,513,336,524,800 FLOPs.
+
+??? question "Based on your analysis above, which parts of the model require the most FLOPs?"
+    3,019,898,880,000 (66.91%) of the matrix multiplies happen in the ffn.
+
+??? question "Repeat your analysis with GPT-2 small (12 layers, 768 d_model, 12 heads), GPT-2 medium (24 layers, 1024 d_model, 16 heads), and GPT-2 large (36 layers, 1280 d_model, 20 heads). As the model size increases, which parts of the Transformer LM take up proportionally more or less of the total FLOPs?"
+    As the model size increase, the importances of the ffn and projections increase while the importance of the final layer decreases a lot and the importance of the attetion slightly decreases.
+
+
+??? question "Take GPT-2 XL and increase the context length to 16,384. How does the total FLOPs for one forward pass change? How do the relative contribution of FLOPs of the model components change?"
+    The total FLOPs grow drastically to 149,522,795,724,800 (33x).
+    The attention FLOPs blow up to 55% and cause the other contributions to decrease relatively.
+
+<!-- prettier-ignore-end -->
