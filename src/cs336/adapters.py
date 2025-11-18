@@ -22,6 +22,7 @@ from cs336.layer.transformer import (
     scaled_dot_product_attention,
     softmax,
 )
+from cs336.loss import cross_entropy
 from cs336.merge import merge
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
@@ -535,7 +536,7 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    return cross_entropy(inputs, targets)
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
