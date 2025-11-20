@@ -159,4 +159,15 @@ With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 
     The total FLOPs grow drastically to 149,522,795,724,800 (33x).
     The attention FLOPs blow up to 55% and cause the other contributions to decrease relatively.
 
+
+
+<!-- prettier-ignore-end -->
+
+### learning_rate_tuning
+
+<!-- prettier-ignore-start -->
+
+??? question "Run the SGD example above with three other values for the learning rate: 1e1, 1e2, and 1e3, for just 10 training iterations. What happens with the loss for each of these learning rates? Does it decay faster, slower, or does it diverge (i.e., increase over the course of training)?"
+    Increasing the learning rate from 1e-1 to 1e2, the loss converges faster. At 1e3, the loss diverges.
+
 <!-- prettier-ignore-end -->
