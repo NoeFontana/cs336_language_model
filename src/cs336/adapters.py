@@ -24,6 +24,7 @@ from cs336.layer.transformer import (
 )
 from cs336.loss import cross_entropy
 from cs336.merge import merge
+from cs336.optim.adamw import AdamW
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
 from cs336.transformer import TransformerLM
@@ -555,7 +556,7 @@ def get_adamw_cls() -> Any:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(

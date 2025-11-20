@@ -158,9 +158,6 @@ With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 
 ??? question "Take GPT-2 XL and increase the context length to 16,384. How does the total FLOPs for one forward pass change? How do the relative contribution of FLOPs of the model components change?"
     The total FLOPs grow drastically to 149,522,795,724,800 (33x).
     The attention FLOPs blow up to 55% and cause the other contributions to decrease relatively.
-
-
-
 <!-- prettier-ignore-end -->
 
 ### learning_rate_tuning
