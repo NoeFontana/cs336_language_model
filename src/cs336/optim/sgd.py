@@ -9,7 +9,7 @@ class SGD(torch.optim.Optimizer):
     def __init__(
         self,
         params: Iterable[torch.Tensor] | Iterable[dict[str, Any]] | Iterable[tuple[str, torch.Tensor]],
-        lr=1e-3,
+        lr: float = 1e-3,
     ) -> None:
         if lr < 0:
             raise ValueError(f"Invalid learning rate: {lr}")
