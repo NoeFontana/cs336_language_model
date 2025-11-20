@@ -1,5 +1,4 @@
 import numpy
-import pytest
 import torch
 import torch.nn.functional as F
 from torch.nn.utils.clip_grad import clip_grad_norm_
@@ -60,7 +59,6 @@ def test_cross_entropy():
     )
 
 
-@pytest.mark.skip("Not Implemented")
 def test_gradient_clipping():
     tensors = [torch.randn((5, 5)) for _ in range(6)]
     max_norm = 1e-2

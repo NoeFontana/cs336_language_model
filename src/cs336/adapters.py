@@ -25,6 +25,7 @@ from cs336.layer.transformer import (
 from cs336.loss import cross_entropy
 from cs336.merge import merge
 from cs336.optim.adamw import AdamW
+from cs336.optim.clip import gradient_clipping
 from cs336.optim.scheduler import lr_cosine_schedule
 from cs336.pretokenization import chunked_pretokenization
 from cs336.tokenizer import Tokenizer
@@ -550,7 +551,7 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    return gradient_clipping(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> Any:
