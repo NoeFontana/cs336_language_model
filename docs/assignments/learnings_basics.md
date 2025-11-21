@@ -168,3 +168,33 @@ With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 
     Increasing the learning rate from 1e-1 to 1e2, the loss converges faster. At 1e3, the loss diverges.
 
 <!-- prettier-ignore-end -->
+
+### adamwAccounting
+
+<!-- prettier-ignore-start -->
+
+??? question "How much peak memory does running AdamW require? Decompose your answer based on the memory usage of the parameters, activations, gradients, and optimizer state. Express your answer in terms of the batch_size and the model hyperparameters (vocab_size, context_length, num_layers, d_model, num_heads). Assume d_ff = 4 × d_model."
+    Assuming each tensor element is a `float32` (4 bytes), the peak memory usage in bytes is decomposed as follows. The expressions are derived from the `adamw_accounting.py` script.
+
+    - **Parameters**: `64*d_model**2*num_layers + 8*d_model*num_layers + 8*d_model*vocab_size + 4*d_model`
+    - **Activations**: `4*batch_size*context_length**2*num_heads*num_layers + 40*batch_size*context_length*d_model*num_layers + 8*batch_size*context_length*d_model + 4*batch_size*context_length*vocab_size`
+    - **Gradients**: `64*d_model**2*num_layers + 8*d_model*num_layers + 8*d_model*vocab_size + 4*d_model`
+    - **Optimizer State**: `128*d_model**2*num_layers + 16*d_model*num_layers + 16*d_model*vocab_size + 8*d_model`
+    - **Total**: `4*batch_size*context_length**2*num_heads*num_layers + 40*batch_size*context_length*d_model*num_layers + 8*batch_size*context_length*d_model + 4*batch_size*context_length*vocab_size + 256*d_model**2*num_layers + 32*d_model*num_layers + 32*d_model*vocab_size + 16*d_model`
+
+
+??? question "Instantiate your answer for a GPT-2 XL-shaped model to get an expression that only depends on the batch_size. What is the maximum batch size you can use and still fit within 80GB memory?"
+    The total peak memory usage for a GPT-2 XL model, in bytes, is given by the expression:
+    `8,397,852,672 * batch_size + 34,032,921,600`.
+
+    To find the maximum batch size that fits within 80GB of memory:
+    - 80 GiB = 80 * 1024^3 bytes = 85,899,345,920 bytes.
+    - Solving `8,397,852,672 * batch_size + 34,032,921,600 <= 85,899,345,920` for `batch_size` gives a maximum integer batch size of **6**.
+
+??? question "How many FLOPs does running one step of AdamW take?"
+    There is 14 operations on the parameters so the FLOPs are `224*d_model**2*num_layers + 28*d_model*num_layers + 28*d_model*vocab_size + 14*d_model` which is 29,778,806,400 FLOPs for GPT2.
+
+??? question "Model FLOPs utilization (MFU) is defined as the ratio of observed throughput (tokens per second) relative to the hardware’s theoretical peak FLOP throughput [Chowdhery et al., 2022]. An NVIDIA A100 GPU has a theoretical peak of 19.5 teraFLOP/s for float32 operations. Assuming you are able to get 50% MFU, how long would it take to train a GPT-2 XL for 400K steps and a batch size of 1024 on a single A100? Following Kaplan et al. [2020] and Hoffmann et al. [2022], assume that the backward pass has twice the FLOPs of the forward pass."
+    6583.57 days
+
+<!-- prettier-ignore-end -->
