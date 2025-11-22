@@ -85,3 +85,6 @@ train-owt-tokenizer:
 
 tokenize-dataset: ## Tokenize the default dataset using the default tokenizer
 	PYTHONPATH=src uv run src/cs336/scripts/tokenize_dataset.py
+
+train-lm:
+	PYTHONPATH=src uv run src/cs336/scripts/train_lm.py
