@@ -1,3 +1,13 @@
+# --- Docker Registry Configuration ---
+DOCKER_REGISTRY := ghcr.io
+# Force username to lowercase to satisfy Docker/GHCR requirements
+DOCKER_USERNAME := $(shell echo "NoeFontana" | tr '[:upper:]' '[:lower:]')
+DOCKER_IMAGE    := cs336-dev
+DOCKER_TAG      ?= latest
+
+# Helper variable for the full image reference
+DOCKER_REF      := $(DOCKER_REGISTRY)/$(DOCKER_USERNAME)/$(DOCKER_IMAGE)
+
 .PHONY: help install build-native test lint check lint-check type-check clean docs docs-serve docs-build pre-commit
 
 help: ## Show this help message
@@ -59,12 +69,6 @@ pre-commit: ## Set up pre-commit hooks
 pre-commit-run: ## Run pre-commit hooks on all files
 	uv run pre-commit run --all-files
 
-build: ## Build the package
-	uv build
-
-publish: ## Publish the package to PyPI (requires PYPI_TOKEN)
-	uv publish
-
 update: ## Update all dependencies
 	uv sync --upgrade
 
@@ -88,3 +92,28 @@ tokenize-dataset: ## Tokenize the default dataset using the default tokenizer
 
 train-lm:
 	PYTHONPATH=src uv run src/cs336/scripts/train_lm.py
+
+
+docker-build: ## Build the Docker image locally
+	@echo "🛠️  Building Docker image: $(DOCKER_IMAGE):latest..."
+	docker build -t $(DOCKER_IMAGE):latest .
+
+docker-login-check: # Internal check (hidden from help)
+	@echo "🔍 Verifying login to $(DOCKER_REGISTRY)..."
+	@grep -q "$(DOCKER_REGISTRY)" ~/.docker/config.json || (echo "❌ Error: You are not logged into $(DOCKER_REGISTRY). Run 'docker login $(DOCKER_REGISTRY)' first." && exit 1)
+
+docker-push: docker-login-check ## Tag and push the image to GHCR
+	@echo "🏷️  Tagging image as: $(DOCKER_REF):$(DOCKER_TAG)"
+	docker tag $(DOCKER_IMAGE):latest $(DOCKER_REF):$(DOCKER_TAG)
+
+	@echo "🚀 Pushing to $(DOCKER_REGISTRY)..."
+	docker push $(DOCKER_REF):$(DOCKER_TAG)
+
+	@if [ "$(DOCKER_TAG)" != "latest" ]; then \
+		echo "🏷️  Also pushing 'latest' tag for convenience..."; \
+		docker tag $(DOCKER_IMAGE):latest $(DOCKER_REF):latest; \
+		docker push $(DOCKER_REF):latest; \
+	fi
+	@echo "✅ Pushed successfully: https://github.com/NoeFontana/$(DOCKER_IMAGE)/pkgs/container/$(DOCKER_IMAGE)"
+
+docker-release: docker-build docker-push ## Build, tag, and push in one step
