@@ -8,6 +8,8 @@ tests/fixtures/
 profile.json
 profile.html
 /results/
+/wandb/
+/checkpoints/
 
 # C extensions
 *.so

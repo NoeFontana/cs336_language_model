@@ -3,11 +3,13 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import torch
 import torch.optim as optim
 
+import wandb
 from cs336.checkpoint import load_checkpoint, save_checkpoint
 from cs336.data import get_batch
 from cs336.loss import cross_entropy
@@ -49,6 +51,9 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--val_period", type=int, default=500, help="Run validation every N steps.")
     parser.add_argument("--checkpoint_path", type=str, default="checkpoints", help="Path to save checkpoints.")
     parser.add_argument("--resume_from_checkpoint", type=str, help="Path to a checkpoint to resume training from.")
+    parser.add_argument("--wandb_project", type=str, default="cs336-language-model", help="Wandb project name.")
+    parser.add_argument("--wandb_run_name", type=str, help="Wandb run name.")
+    parser.add_argument("--no_wandb", action="store_true", help="Disable wandb logging.")
     return parser.parse_args()
 
 
@@ -102,7 +107,7 @@ def setup_training(
     return train_data, val_data, model, optimizer, step
 
 
-def validate_model(model: torch.nn.Module, val_data: np.memmap, args: argparse.Namespace) -> None:
+def validate_model(model: torch.nn.Module, val_data: np.memmap, args: argparse.Namespace) -> float:
     """
     Run a validation step and log the validation loss.
 
@@ -110,16 +115,18 @@ def validate_model(model: torch.nn.Module, val_data: np.memmap, args: argparse.N
         model: The model to validate.
         val_data: The validation dataset.
         args: Command-line arguments.
+
+    Returns:
+        The validation loss.
     """
     logger = logging.getLogger(__name__)
     logger.info("Running validation...")
     model.eval()
     with torch.inference_mode():
         val_x, val_y = get_batch(val_data, args.batch_size, args.context_length, args.device)
-        val_logits = model(val_x)
-        val_loss = cross_entropy(val_logits, val_y)
-    logger.info(f"Validation Loss: {val_loss.item():.4f}")
+        val_loss = cross_entropy(model(val_x), val_y)
     model.train()
+    return val_loss.item()
 
 
 def main() -> None:
@@ -145,6 +152,8 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(message)s",
     )
     logger = logging.getLogger(__name__)
+
+    wandb.init(project=args.wandb_project, name=args.wandb_run_name, config=cast(Any, args))
 
     Path(args.checkpoint_path).mkdir(exist_ok=True)
 
@@ -195,10 +204,15 @@ def main() -> None:
                     f"Epoch {epoch}, Step {step}, Loss: {loss.item():.4f}, "
                     f"LR: {lr:.6f}, Time: {(end_time - start_time) * 1000:.2f}ms"
                 )
+                wandb.log(
+                    {"train/loss": loss.item(), "train/lr": lr, "step": step},
+                )
 
             # Validation and checkpointing
             if step % args.val_period == 0 and step > 0:
-                validate_model(model, val_data, args)
+                val_loss = validate_model(model, val_data, args)
+                logger.info(f"Validation Loss: {val_loss:.4f}")
+                wandb.log({"val/loss": val_loss, "step": step})
 
                 # Save checkpoint
                 checkpoint_file = Path(args.checkpoint_path) / f"step_{step}.pt"
@@ -211,6 +225,8 @@ def main() -> None:
     final_checkpoint_path = Path(args.checkpoint_path) / "final.pt"
     save_checkpoint(model, optimizer, step, final_checkpoint_path)
     logger.info(f"Training finished. Final checkpoint saved to {final_checkpoint_path}")
+
+    wandb.finish()
 
 
 if __name__ == "__main__":
