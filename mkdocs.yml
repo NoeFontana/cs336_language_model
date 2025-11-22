@@ -62,6 +62,8 @@ nav:
   - Home: index.md
   - Assignments:
       - "CS336 Basics": "assignments/learnings_basics.md"
+  - Guides:
+      - "Docker for Development": "guides/docker.md"
   - Development:
       - "API Reference": "development/reference.md"
 
