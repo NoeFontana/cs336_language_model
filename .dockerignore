@@ -1,0 +1,44 @@
+# Version control
+.git/
+.github/
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+.env
+dist/
+
+# Testing and Linting
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.benchmarks/
+
+# Rust artifacts
+cs336-native/target/
+
+# Documentation
+site/
+
+# Data
+checkpoints/
+results/
+wandb/
+
+# IDE and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+Dockerfile
+.dockerignore
