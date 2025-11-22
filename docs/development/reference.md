@@ -2,7 +2,6 @@
 
 This is the API reference for the `cs336` package.
 
-::: cs336.adapters
 ::: cs336.checkpoint
 ::: cs336.data
 ::: cs336.pretokenization
