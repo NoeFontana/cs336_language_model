@@ -53,7 +53,6 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--resume_from_checkpoint", type=str, help="Path to a checkpoint to resume training from.")
     parser.add_argument("--wandb_project", type=str, default="cs336-language-model", help="Wandb project name.")
     parser.add_argument("--wandb_run_name", type=str, help="Wandb run name.")
-    parser.add_argument("--no_wandb", action="store_true", help="Disable wandb logging.")
     return parser.parse_args()
 
 
