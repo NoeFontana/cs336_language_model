@@ -35,12 +35,14 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths: [src]
           options:
             docstring_style: google
             merge_init_into_class: true
             separate_signature: true
             show_signature_annotations: true
-
+            show_root_heading: true
+            show_root_full_path: true
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -61,7 +63,7 @@ nav:
   - Assignments:
       - "CS336 Basics": "assignments/learnings_basics.md"
   - Development:
-    - "API Reference": "development/reference.md"
+      - "API Reference": "development/reference.md"
 
 watch:
   - src
