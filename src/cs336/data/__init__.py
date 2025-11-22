@@ -34,7 +34,7 @@ def get_batch(
     targets_np = token[indices + 1]
 
     # Convert to PyTorch tensors and move to the specified device
-    inputs = torch.from_numpy(inputs_np).to(device, non_blocking=True)
-    targets = torch.from_numpy(targets_np).to(device, non_blocking=True)
+    inputs = torch.from_numpy(inputs_np).to(device, torch.long, non_blocking=True)
+    targets = torch.from_numpy(targets_np).to(device, torch.long, non_blocking=True)
 
     return inputs, targets
