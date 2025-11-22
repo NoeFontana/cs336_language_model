@@ -39,7 +39,7 @@ RUN groupadd -g $GID -o user && useradd -m -u $UID -g $GID -o -s /bin/bash user
 # Set environment variables for uv
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
-    UV_PYTHON_DOWNLOADS=always \
+    UV_PYTHON_DOWNLOADS=true \
     UV_PYTHON=3.11
 
 # Switch to user to ensure venv is owned by them
