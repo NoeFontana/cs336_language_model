@@ -62,8 +62,10 @@ COPY --chown=user:user . .
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen
 
-# Ensure the venv is in the path
-ENV PATH="/app/.venv/bin:$PATH"
+# Set runtime environment variables
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app/src" \
+    USE_NATIVE_MERGE=1
 
 # Keep container alive
 CMD ["tail", "-f", "/dev/null"]
