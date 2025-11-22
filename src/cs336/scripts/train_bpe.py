@@ -3,14 +3,97 @@ import base64
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from cs336.adapters import run_train_bpe
 
+logger = logging.getLogger(__name__)
+
+
+def train_bpe(
+    input_path: str, vocab_size: int, special_tokens: list[str]
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    """Trains a BPE tokenizer on a dataset.
+
+    Args:
+        input_path: Path to the input corpus file.
+        vocab_size: Total vocabulary size.
+        special_tokens: list of special tokens to add to the vocabulary.
+
+    Returns:
+        A tuple containing the vocabulary and the merge rules.
+    """
+    logger.info(f"Training BPE on {input_path} with vocab size {vocab_size}")
+    vocab, merges = run_train_bpe(
+        input_path=input_path,
+        vocab_size=vocab_size,
+        special_tokens=special_tokens,
+    )
+    return vocab, merges
+
+
+def save_tokenizer_files(
+    vocab: dict[int, bytes],
+    merges: list[tuple[bytes, bytes]],
+    output_prefix: str,
+) -> None:
+    """Saves the vocabulary and merges to a JSON file.
+
+    Args:
+        vocab: The vocabulary mapping token IDs to token bytes.
+        merges: A list of merge rules.
+        output_prefix: Prefix for the output JSON file. The file will be named
+            `{output_prefix}.json`.
+    """
+    output_path = Path(f"{output_prefix}.json")
+
+    # Prepare data for JSON serialization (bytes need to be base64 encoded)
+    serializable_vocab = {
+        token_id: base64.b64encode(token_bytes).decode("ascii") for token_id, token_bytes in vocab.items()
+    }
+    serializable_merges = [
+        (base64.b64encode(p1).decode("ascii"), base64.b64encode(p2).decode("ascii")) for p1, p2 in merges
+    ]
+
+    data_to_save: dict[str, Any] = {
+        "vocab": serializable_vocab,
+        "merges": serializable_merges,
+    }
+
+    with output_path.open("w", encoding="utf-8") as f:
+        json.dump(data_to_save, f, indent=2)
+    logger.info(f"Saved vocab and merges to {output_path}")
+
+
+def train_and_save_bpe_tokenizer(
+    input_path: str,
+    vocab_size: int,
+    special_tokens: list[str],
+    output_prefix: str | None = None,
+) -> None:
+    """Trains a BPE tokenizer and saves the vocabulary and merges.
+
+    Args:
+        input_path: Path to the input corpus file.
+        vocab_size: Total vocabulary size.
+        special_tokens: list of special tokens to add to the vocabulary.
+        output_prefix: Prefix for output files. If not set, uses the input
+            filename stem.
+    """
+    vocab, merges = train_bpe(input_path, vocab_size, special_tokens)
+
+    if output_prefix is None:
+        output_prefix = Path(input_path).stem
+
+    save_tokenizer_files(vocab, merges, output_prefix)
+
 
 def main() -> None:
-    """
-    Train a BPE tokenizer on a dataset and save vocab and merges files.
-    """
+    """Main function to train a BPE tokenizer from the command line."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
     parser = argparse.ArgumentParser(description="Train BPE tokenizer on a dataset.")
     parser.add_argument(
         "--input-path",
@@ -29,7 +112,7 @@ def main() -> None:
         type=str,
         nargs="*",
         default=["<|endoftext|>"],
-        help="List of special tokens to add to the vocabulary",
+        help="list of special tokens to add to the vocabulary",
     )
     parser.add_argument(
         "--output-prefix",
@@ -39,39 +122,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-    )
-    logger = logging.getLogger(__name__)
-    logger.info(f"Training BPE on {args.input_path} with vocab size {args.vocab_size}")
-
-    vocab, merges = run_train_bpe(
+    train_and_save_bpe_tokenizer(
         input_path=args.input_path,
         vocab_size=args.vocab_size,
         special_tokens=args.special_tokens,
+        output_prefix=args.output_prefix,
     )
-
-    if args.output_prefix is not None:
-        output_prefix: str = args.output_prefix
-        output_path = Path(f"{output_prefix}.json")
-
-        # Prepare data for JSON serialization
-        serializable_vocab = {
-            token_id: base64.b64encode(token_bytes).decode("ascii") for token_id, token_bytes in vocab.items()
-        }
-        serializable_merges = [
-            (base64.b64encode(p1).decode("ascii"), base64.b64encode(p2).decode("ascii")) for p1, p2 in merges
-        ]
-
-        data_to_save = {
-            "vocab": serializable_vocab,
-            "merges": serializable_merges,
-        }
-
-        with output_path.open("w", encoding="utf-8") as f:
-            json.dump(data_to_save, f, indent=2)
-        logger.info(f"Saved vocab and merges to {output_path}")
 
 
 if __name__ == "__main__":
