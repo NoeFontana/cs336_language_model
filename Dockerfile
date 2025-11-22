@@ -40,7 +40,8 @@ RUN groupadd -g $GID -o user && useradd -m -u $UID -g $GID -o -s /bin/bash user
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=true \
-    UV_PYTHON=3.11
+    UV_PYTHON=3.11 \
+    CARGO_BUILD_FLAGS="--release"
 
 # Switch to user to ensure venv is owned by them
 USER user
@@ -65,7 +66,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Set runtime environment variables
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app/src" \
-    USE_NATIVE_MERGE=1
+    USE_NATIVE_MERGE=1 \
+    CARGO_BUILD_FLAGS="--release"
 
 # Keep container alive
 CMD ["tail", "-f", "/dev/null"]
