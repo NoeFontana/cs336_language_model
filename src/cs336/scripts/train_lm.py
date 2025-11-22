@@ -8,8 +8,8 @@ from typing import Any, cast
 import numpy as np
 import torch
 import torch.optim as optim
-
 import wandb
+
 from cs336.checkpoint import load_checkpoint, save_checkpoint
 from cs336.data import get_batch
 from cs336.loss import cross_entropy
