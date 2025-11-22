@@ -19,12 +19,12 @@ def get_batch(
         device (str | torch.device): The PyTorch device to place the output tensors on.
 
     Returns:
-        A tuple containing two tensors:
-        - inputs (torch.Tensor): A tensor of shape (batch_size, context_length)
-          containing the input sequences.
-        - targets (torch.Tensor): A tensor of shape (batch_size, context_length)
-          containing the target sequences, where target[i, j] is the token
-          that follows input[i, j].
+        A tuple of (inputs, targets) tensors.
+            - inputs: A tensor of shape (batch_size, context_length) containing
+              the input sequences.
+            - targets: A tensor of shape (batch_size, context_length) containing
+              the target sequences, where target[i, j] is the token that
+              follows input[i, j].
     """
     start_indices = np.random.randint(0, len(token) - context_length, size=(batch_size,))
 
