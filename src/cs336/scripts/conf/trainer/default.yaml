@@ -1,0 +1,10 @@
+batch_size: 64
+num_epochs: 1
+max_steps: null
+device: "cuda"
+log_period: 20
+val_period: 500
+checkpoint_path: "checkpoints"
+resume_from_checkpoint: null
+wandb_project: "cs336-language-model"
+wandb_run_name: null

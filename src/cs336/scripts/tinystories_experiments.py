@@ -15,7 +15,14 @@ from pathlib import Path
 
 from cs336.scripts.tokenize_dataset import tokenize_dataset
 from cs336.scripts.train_bpe import train_and_save_bpe_tokenizer
-from cs336.scripts.train_lm import Trainer, TrainingConfig
+from cs336.scripts.train_lm import (
+    DataConfig,
+    ExperimentConfig,
+    ModelConfig,
+    OptimizerConfig,
+    Trainer,
+    TrainerConfig,
+)
 
 # Set up a logger for this script
 logger = logging.getLogger(__name__)
@@ -58,7 +65,7 @@ def main() -> None:
         "--output_prefix",
         type=str,
         default=Path("~/datasets/cs336/tinystories_tokenizer").expanduser().as_posix(),
-        help="Prefix for output tokenizer files (e.g., 'my_tokenizer' -> 'my_tokenizer.json' and 'my_tokenizer.merges').",
+        help="Prefix for output tokenizer files (e.g., 'my_tokenizer' -> 'my_tokenizer.json').",
     )
 
     # --- Parser for tokenize ---
@@ -157,9 +164,39 @@ def main() -> None:
 
         elif args.command == "train-lm":
             logger.info("Starting language model training...")
-            # Filter out any arguments that weren't specified on the CLI
-            cli_config_args = {k: v for k, v in vars(args).items() if v is not None and k != "command"}
-            config = TrainingConfig(**cli_config_args)
+            model_config = ModelConfig(
+                vocab_size=args.vocab_size,
+                context_length=args.context_length,
+                d_model=args.d_model,
+                d_ff=args.d_ff,
+                num_heads=args.num_heads,
+                num_layers=args.num_layers,
+            )
+            optimizer_config = OptimizerConfig(
+                learning_rate=args.learning_rate,
+                min_learning_rate=args.min_learning_rate,
+                warmup_steps=args.warmup_steps,
+            )
+            data_config = DataConfig(
+                train_data_path=args.train_data_path,
+                val_data_path=args.val_data_path,
+            )
+            trainer_config = TrainerConfig(
+                batch_size=args.batch_size,
+                max_steps=args.max_steps,
+                device=args.device,
+                checkpoint_path=args.checkpoint_path,
+                resume_from_checkpoint=args.resume_from_checkpoint,
+                wandb_project=args.wandb_project,
+                wandb_run_name=args.wandb_run_name,
+            )
+
+            config = ExperimentConfig(
+                model=model_config,
+                optimizer=optimizer_config,
+                data=data_config,
+                trainer=trainer_config,
+            )
 
             trainer = Trainer(config)
             trainer.train()
