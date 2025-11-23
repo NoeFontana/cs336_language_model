@@ -60,7 +60,7 @@ class Trainer:
         wandb.init(project=config.wandb_project, name=config.wandb_run_name, config=asdict(config))
 
         # Setup directories
-        Path(self.config.checkpoint_path).mkdir(exist_ok=True)
+        Path(self.config.checkpoint_path).mkdir(exist_ok=True, parents=True)
 
         # Setup data, model, and optimizer
         self._setup_training()
