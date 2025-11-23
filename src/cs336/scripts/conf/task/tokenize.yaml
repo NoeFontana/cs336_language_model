@@ -1,0 +1,6 @@
+name: tokenize
+vocab_file: ~/datasets/cs336/tinystories_tokenizer.json
+merges_file: null
+input_file: ???
+output_folder: ~/datasets/cs336
+special_tokens: ["<|endoftext|>"]
