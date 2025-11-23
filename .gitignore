@@ -10,6 +10,7 @@ profile.html
 /results/
 /wandb/
 /checkpoints/
+/outputs/
 
 # C extensions
 *.so

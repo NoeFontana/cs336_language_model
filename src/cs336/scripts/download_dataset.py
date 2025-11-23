@@ -2,17 +2,14 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
-from huggingface_hub import snapshot_download, utils as hf_utils
 
+from huggingface_hub import snapshot_download
+from huggingface_hub import utils as hf_utils
 
 logger = logging.getLogger(__name__)
 
-def download_dataset(
-    repo_id: str, 
-    output_dir: Optional[Path] = None, 
-    force_download: bool = False
-) -> Path:
+
+def download_dataset(repo_id: str, output_dir: Path | None = None, force_download: bool = False) -> Path:
     """
     Downloads a dataset from Hugging Face Hub.
 
@@ -43,11 +40,11 @@ def download_dataset(
         )
 
         logger.info(f"✅ Success! Files are available at: {local_path}")
-        
+
         # Quick content summary
-        file_count = len(list(Path(local_path).rglob('*')))
+        file_count = len(list(Path(local_path).rglob("*")))
         logger.info(f"📂 Total files present: {file_count}")
-        
+
         return Path(local_path)
 
     except hf_utils.RepositoryNotFoundError:
@@ -60,34 +57,21 @@ def download_dataset(
         logger.error(f"❌ An unexpected error occurred: {e}")
         sys.exit(1)
 
+
 if __name__ == "__main__":
     # --- CLI Argument Parsing ---
     parser = argparse.ArgumentParser(description="Download a dataset from Hugging Face Hub.")
-    
+
+    parser.add_argument("--repo_id", type=str, default="NoeFontana/cs336", help="The Hugging Face repository ID.")
     parser.add_argument(
-        "--repo_id", 
-        type=str, 
-        default="NoeFontana/cs336", 
-        help="The Hugging Face repository ID."
+        "--output_dir", type=Path, default=None, help="Custom output directory. Defaults to ~/datasets/<repo_name>."
     )
-    parser.add_argument(
-        "--output_dir", 
-        type=Path, 
-        default=None, 
-        help="Custom output directory. Defaults to ~/datasets/<repo_name>."
-    )
-    parser.add_argument(
-        "--force", 
-        action="store_true", 
-        help="Force redownload of files."
-    )
+    parser.add_argument("--force", action="store_true", help="Force redownload of files.")
 
     args = parser.parse_args()
 
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     download_dataset(args.repo_id, args.output_dir, args.force)

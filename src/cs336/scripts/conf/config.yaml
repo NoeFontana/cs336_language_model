@@ -1,0 +1,10 @@
+defaults:
+  - _self_
+  - model: transformer
+  - optimizer: adamw
+  - data: owt
+  - trainer: default
+
+hydra:
+  job:
+    chdir: False
