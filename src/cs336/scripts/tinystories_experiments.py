@@ -57,8 +57,8 @@ def main() -> None:
     bpe_parser.add_argument(
         "--output_prefix",
         type=str,
-        default="results/tinystories_tokenizer",
-        help="Prefix for output tokenizer files (e.g., 'my_tokenizer' -> 'my_tokenizer.json').",
+        default=Path("~/datasets/cs336/tinystories_tokenizer").expanduser().as_posix(),
+        help="Prefix for output tokenizer files (e.g., 'my_tokenizer' -> 'my_tokenizer.json' and 'my_tokenizer.merges').",
     )
 
     # --- Parser for tokenize ---
@@ -68,7 +68,7 @@ def main() -> None:
     tokenize_parser.add_argument(
         "--vocab_file",
         type=Path,
-        default=Path("results/tinystories_tokenizer.json"),
+        default=Path("~/datasets/cs336/tinystories_tokenizer.json").expanduser(),
         help="Path to the vocabulary file (JSON format).",
     )
     tokenize_parser.add_argument(
@@ -84,9 +84,9 @@ def main() -> None:
     )
     tokenize_parser.add_argument(
         "--output_folder",
-        default="results",
+        default=Path("~/datasets/cs336").expanduser(),
         type=Path,
-        help="Path to save the tokenized output. Defaults to input-file with .bin extension.",
+        help="Path to save the tokenized output. Defaults to the directory of the input file.",
     )
     tokenize_parser.add_argument(
         "--special_tokens",
@@ -100,8 +100,16 @@ def main() -> None:
         "train-lm", help="Train a Transformer Language Model.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     # Add arguments to the train-lm subparser, which will override TrainingConfig defaults
-    lm_parser.add_argument("--train_data_path", type=str, default="results/TinyStoriesV2-GPT4-train.bin")
-    lm_parser.add_argument("--val_data_path", type=str, default="results/TinyStoriesV2-GPT4-valid.bin")
+    lm_parser.add_argument(
+        "--train_data_path",
+        type=str,
+        default=Path("~/datasets/cs336/TinyStoriesV2-GPT4-train.bin").expanduser().as_posix(),
+    )
+    lm_parser.add_argument(
+        "--val_data_path",
+        type=str,
+        default=Path("~/datasets/cs336/TinyStoriesV2-GPT4-valid.bin").expanduser().as_posix(),
+    )
     lm_parser.add_argument("--checkpoint_path", type=str, default="checkpoints/tinystories")
     lm_parser.add_argument("--vocab_size", type=int, default=DEFAULT_VOCAB_SIZE)
     lm_parser.add_argument("--context_length", type=int, default=256)
