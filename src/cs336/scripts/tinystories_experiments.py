@@ -118,7 +118,7 @@ def main() -> None:
     lm_parser.add_argument("--num_heads", type=int, default=16)
     lm_parser.add_argument("--num_layers", type=int, default=4)
     lm_parser.add_argument("--batch_size", type=int, default=64)
-    lm_parser.add_argument("--learning_rate", type=float, default=3e-4)
+    lm_parser.add_argument("--learning_rate", type=float, default=1e-2)
     lm_parser.add_argument("--min_learning_rate", type=float, default=3e-5)
     lm_parser.add_argument("--warmup_steps", type=int, default=2000)
     lm_parser.add_argument("--max_steps", type=int, default=20000)
