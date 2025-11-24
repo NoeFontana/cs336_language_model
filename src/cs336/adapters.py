@@ -14,6 +14,7 @@ from torch import Tensor
 from cs336.checkpoint import load_checkpoint, save_checkpoint
 from cs336.data import get_batch
 from cs336.layer.embedding import Embedding
+from cs336.layer.feedforward import silu
 from cs336.layer.linear import Linear
 from cs336.layer.transformer import (
     MHSA,
@@ -484,7 +485,7 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
         Float[Tensor,"..."]: of with the same shape as `in_features` with the output of applying
         SiLU to each element.
     """
-    raise NotImplementedError
+    return silu(in_features)
 
 
 def run_get_batch(
