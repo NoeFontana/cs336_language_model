@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import hydra
+import torch
 from omegaconf import DictConfig, OmegaConf
 
 from cs336.scripts.tokenize_dataset import tokenize_dataset
@@ -25,6 +26,9 @@ from cs336.scripts.train_lm import (
     Trainer,
     TrainerConfig,
 )
+
+torch.set_float32_matmul_precision("high")
+torch.backends.cudnn.benchmark = True
 
 # Set up a logger for this script
 logger = logging.getLogger(__name__)

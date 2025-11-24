@@ -81,6 +81,7 @@ class Trainer:
             project=config.trainer.wandb_project,
             name=config.trainer.wandb_run_name,
             config=asdict(config),
+            settings=wandb.Settings(save_code=True),
         )
 
         # Setup directories

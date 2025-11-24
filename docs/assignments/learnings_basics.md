@@ -91,6 +91,17 @@ Back to optimizing, now with merging, the main data structures optimizations are
 
 With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 35s on owt-train.
 
+### Training on OpenWebText
+
+Notes:
+
+Experiments done over a few iterations:
+
+- Increasing d_model: 768, d_ff: 2048, num_heads: 12 helps leads to lower loss
+- Setting `torch.set_float32_matmul_precision("high")` leads to 2.6 faster iterations.
+- Setting `torch.backends.cudnn.benchmark = True` saves about 1ms out of 50ms.
+- Doubling the context length to `context_length: 512` slightly improves the loss for a given step.
+
 ## Assignment Questions
 
 ### Unicode
