@@ -56,6 +56,7 @@ class TrainerConfig:
     resume_from_checkpoint: str | None = None
     wandb_project: str = "cs336-language-model"
     wandb_run_name: str | None = None
+    use_torch_compile: bool = True
 
 
 @dataclass(frozen=True)
@@ -118,6 +119,10 @@ class Trainer:
             num_layers=self.config.model.num_layers,
             theta=self.config.model.theta,
         ).to(self.config.trainer.device)
+
+        if self.config.trainer.use_torch_compile:
+            logger.info("Compiling model with torch.compile...")
+            self.model.compile()
         self.optimizer = optim.AdamW(
             self.model.parameters(),
             lr=self.config.optimizer.learning_rate,
