@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - task: train_lm
+
+hydra:
+  job:
+    chdir: False

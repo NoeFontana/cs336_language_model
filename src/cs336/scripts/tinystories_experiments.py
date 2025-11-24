@@ -1,5 +1,5 @@
 """
-Orchestrates experiments on the TinyStories dataset.
+Orchestrates experiments.
 
 This script provides a command-line interface to run a sequence of tasks
 for a language model experiment:
@@ -30,7 +30,7 @@ from cs336.scripts.train_lm import (
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="tinystories")
+@hydra.main(version_base=None, config_path="conf", config_name="experiments")
 def main(cfg: DictConfig) -> None:
     """Main entry point for the script, handling command-line arguments."""
 
