@@ -1,5 +1,6 @@
 import argparse
 import logging
+from pathlib import Path
 
 import torch
 
@@ -34,19 +35,36 @@ def get_args() -> argparse.Namespace:
         type=str,
         help="Path to the merges file. Optional if merges are in the vocab file.",
     )
-    parser.add_argument("--vocab_size", type=int, default=32000, help="Vocabulary size.")
-    parser.add_argument("--context_length", type=int, default=256, help="Context length for the model.")
-    parser.add_argument("--d_model", type=int, default=512, help="Model dimension.")
-    parser.add_argument("--d_ff", type=int, default=2048, help="Feed-forward dimension.")
-    parser.add_argument("--num_heads", type=int, default=8, help="Number of attention heads.")
-    parser.add_argument("--num_layers", type=int, default=6, help="Number of transformer layers.")
-    parser.add_argument("--theta", type=float, default=10000.0, help="Theta for RoPE.")
-    parser.add_argument("--max_new_tokens", type=int, default=100, help="Maximum number of new tokens to generate.")
-    parser.add_argument("--end_of_text_token", type=str, default="<|endoftext|>", help="End-of-text token.")
-    parser.add_argument("--max_seq_len", type=int, default=256, help="Maximum sequence length for the model.")
-    parser.add_argument("--top_p", type=float, default=0.9, help="Nucleus sampling probability.")
-    parser.add_argument("--temperature", type=float, default=1.0, help="Sampling temperature. 1.0 means no change.")
-    parser.add_argument("--device", type=str, default="cuda", help="Device to train on.")
+    parser.add_argument(
+        "--max_new_tokens",
+        type=int,
+        default=100,
+        help="Maximum number of new tokens to generate.",
+    )
+    parser.add_argument(
+        "--end_of_text_token",
+        type=str,
+        default="<|endoftext|>",
+        help="End-of-text token.",
+    )
+    parser.add_argument(
+        "--top_p",
+        type=float,
+        default=0.9,
+        help="Nucleus sampling probability.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="Sampling temperature. 1.0 means no change.",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cuda",
+        help="Device to run generation on.",
+    )
     return parser.parse_args()
 
 
@@ -131,23 +149,55 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logger = logging.getLogger(__name__)
 
+    checkpoint_path = Path(args.checkpoint_file)
+    logger.info(f"Loading model checkpoint from {checkpoint_path}...")
+
+    # Load checkpoint
+    checkpoint = torch.load(checkpoint_path, map_location=args.device)
+
+    # Validate and extract config
+    if "config" not in checkpoint:
+        raise ValueError(f"Checkpoint at {checkpoint_path} does not contain configuration.")
+
+    config = checkpoint["config"]
+    if "model" not in config:
+        raise ValueError("Checkpoint configuration is missing 'model' section.")
+
+    model_config = config["model"]
+
+    # Extract model hyperparameters
+    vocab_size = model_config["vocab_size"]
+    context_length = model_config["context_length"]
+    d_model = model_config["d_model"]
+    d_ff = model_config["d_ff"]
+    num_heads = model_config["num_heads"]
+    num_layers = model_config["num_layers"]
+    theta = model_config["theta"]
+
     logger.info("Loading tokenizer...")
     tokenizer = Tokenizer.from_files(vocab_filepath=args.vocab_file, merges_filepath=args.merges_file)
     end_of_text_token_id = tokenizer.encode(args.end_of_text_token)[0]
 
     logger.info("Initializing model...")
     model: TransformerLM = TransformerLM(
-        vocab_size=args.vocab_size,
-        max_seq_len=args.context_length,
-        d_model=args.d_model,
-        d_ff=args.d_ff,
-        num_heads=args.num_heads,
-        num_layers=args.num_layers,
-        theta=args.theta,
+        vocab_size=vocab_size,
+        max_seq_len=context_length,
+        d_model=d_model,
+        d_ff=d_ff,
+        num_heads=num_heads,
+        num_layers=num_layers,
+        theta=theta,
     ).to(args.device)
 
-    logger.info(f"Loading model checkpoint from {args.checkpoint_file}...")
-    model.load_state_dict(torch.load(args.checkpoint_file, map_location=args.device)["model"])
+    logger.info("Loading model state...")
+    if "model_state_dict" in checkpoint:
+        model.load_state_dict(checkpoint["model_state_dict"])
+    elif "model" in checkpoint:
+        logger.warning("Loading model state from legacy 'model' key.")
+        model.load_state_dict(checkpoint["model"])
+    else:
+        raise ValueError("Checkpoint is missing 'model_state_dict' (or legacy 'model') key.")
+
     model.eval()
 
     logger.info("Generating completion...")
@@ -157,7 +207,7 @@ def main() -> None:
         prompt=args.prompt,
         max_new_tokens=args.max_new_tokens,
         end_of_text_token_id=end_of_text_token_id,
-        max_seq_len=args.max_seq_len,
+        max_seq_len=context_length,
         temperature=args.temperature,
         top_p=args.top_p,
         device=args.device,
