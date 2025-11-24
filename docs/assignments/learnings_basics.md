@@ -251,4 +251,10 @@ With these optimizations, merging is about 0.2s on TinyStoriesV2-GPT4-train and 
     SiLU reached 1.41 final loss vs 1.33 for SwiGLU.
     From the loss, curve this is more chance than anything for this experiment. Larger scales experiments are warranted to show that SwiGLU is better.
 
+??? question "Train your language model on OpenWebText with the same model architecture and total training  iterations as TinyStories. How well does this model do?
+    The loss function converges much more slowly. It ends around ~4, for a similar configuration, where only the number of tokens was increased 32000.
+    The generated sentences ends up repeating themselves.
+
+    This is due to the fact that OpenWebText is a much larger and much more diverse dataset. A larger model is required to attain good performances on it. We'll also need to train the model for longer.
+
 <!-- prettier-ignore-end -->
