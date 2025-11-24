@@ -1,5 +1,4 @@
 import numpy
-import pytest
 import torch
 import torch.nn.functional as F
 from einops import rearrange
@@ -191,7 +190,6 @@ def test_rope(numpy_snapshot, in_embeddings, d_model, theta, n_queries, pos_ids)
     numpy_snapshot.assert_match(output, atol=1e-6)
 
 
-@pytest.mark.skip("Not Implemented")
 def test_silu_matches_pytorch():
     x = torch.tensor(
         [

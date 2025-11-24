@@ -4,6 +4,10 @@ from torch import nn
 from cs336.layer.linear import Linear
 
 
+def silu(x: torch.Tensor) -> torch.Tensor:
+    return x * torch.sigmoid(x)
+
+
 class FeedForward(nn.Module):
     """Implements the SwiGLU feed-forward layer.
 
@@ -34,6 +38,32 @@ class FeedForward(nn.Module):
             The output tensor of shape (..., d_model).
         """
         silu_in = self.w1(x)
-        silu = silu_in * torch.sigmoid(silu_in)
-        swiglu = silu * self.w3(x)
+        swiglu = silu(silu_in) * self.w3(x)
         return self.w2(swiglu)
+
+
+class FFNSiLU(nn.Module):
+    """Implements the SiLU feed-forward layer."""
+
+    def __init__(self, d_model: int, d_ff: int) -> None:
+        """Initializes the FeedForward layer.
+
+        Args:
+            d_model: The dimensionality of the input and output.
+            d_ff: The inner dimension of the feed-forward layer. It is usually
+                a multiple of d_model.
+        """
+        super().__init__()
+        self.w1 = Linear(d_model, d_ff)
+        self.w2 = Linear(d_ff, d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Performs the forward pass of the SiLU layer.
+
+        Args:
+            x: The input tensor of shape (..., d_model).
+        Returns:
+            The output tensor of shape (..., d_model).
+        """
+        silu_in = self.w1(x)
+        return self.w2(silu(silu_in))
