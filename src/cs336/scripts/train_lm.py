@@ -1,17 +1,17 @@
 import logging
 import time
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import hydra
-import numpy as np
 import torch
 import torch.optim as optim
 import wandb
 from omegaconf import DictConfig
 
 from cs336.checkpoint import save_checkpoint
-from cs336.data import get_batch
+from cs336.data import create_train_loader, create_val_loader
 from cs336.loss import cross_entropy
 from cs336.optim.scheduler import lr_cosine_schedule
 from cs336.transformer import TransformerLM
@@ -42,13 +42,14 @@ class OptimizerConfig:
 class DataConfig:
     train_data_path: str = "./results/owt_train.bin"
     val_data_path: str = "./results/owt_valid.bin"
+    seed: int = 42
 
 
 @dataclass(frozen=True)
 class TrainerConfig:
     batch_size: int = 64
     num_epochs: int = 1
-    max_steps: int | None = None
+    max_steps: int = 1_000_000
     device: str = "cuda"
     log_period: int = 10
     val_period: int = 500
@@ -57,6 +58,7 @@ class TrainerConfig:
     wandb_project: str = "cs336-language-model"
     wandb_run_name: str | None = None
     use_torch_compile: bool = True
+    num_workers: int = 4
 
 
 @dataclass(frozen=True)
@@ -72,7 +74,6 @@ class Trainer:
 
     def __init__(self, config: ExperimentConfig):
         """Initializes the Trainer.
-
         Args:
             config: The training configuration.
         """
@@ -106,10 +107,6 @@ class Trainer:
                     trainer=TrainerConfig(**loaded_config["trainer"]),
                 )
 
-        logger.info("Loading data...")
-        self.train_data = np.memmap(self.config.data.train_data_path, dtype=np.uint16, mode="r")
-        self.val_data = np.memmap(self.config.data.val_data_path, dtype=np.uint16, mode="r")
-
         logger.info("Setting up model and optimizer...")
         self.model: torch.nn.Module = TransformerLM(
             vocab_size=self.config.model.vocab_size,
@@ -139,90 +136,104 @@ class Trainer:
             self.optimizer.load_state_dict(loaded_checkpoint["optimizer_state_dict"])
             self.step = loaded_checkpoint["iteration"]
 
-    def _validate(self) -> float:
-        """Runs a validation step and returns the loss.
+    def _get_infinite_loader(self, loader: torch.utils.data.DataLoader) -> Iterable[tuple[torch.Tensor, torch.Tensor]]:
+        while True:
+            yield from loader
 
+    def _validate(self, val_loader: Iterable[tuple[torch.Tensor, torch.Tensor]]) -> float:
+        """Runs a validation step and returns the loss.
         Returns:
             The validation loss.
         """
         logger.info("Running validation...")
         self.model.eval()
+        device = self.config.trainer.device
         with torch.inference_mode():
-            val_x, val_y = get_batch(
-                self.val_data,
-                self.config.trainer.batch_size,
-                self.config.model.context_length,
-                self.config.trainer.device,
-            )
-            val_loss = cross_entropy(self.model(val_x), val_y)
+            total_val_loss = 0.0
+            num_val_batches = 0
+            for x, y in val_loader:
+                x = x.to(device, non_blocking=True)
+                y = y.to(device, non_blocking=True)
+                val_loss = cross_entropy(self.model(x), y)
+                total_val_loss += val_loss.item()
+                num_val_batches += 1
         self.model.train()
-        return val_loss.item()
+        return total_val_loss / num_val_batches if num_val_batches > 0 else 0.0
 
     def train(self) -> None:
         """Runs the main training loop."""
         logger.info("Starting training...")
-        total_steps = (
-            self.config.trainer.max_steps
-            if self.config.trainer.max_steps
-            else (len(self.train_data) // (self.config.trainer.batch_size * self.config.model.context_length))
-            * self.config.trainer.num_epochs
+
+        train_loader = create_train_loader(
+            data_path=self.config.data.train_data_path,
+            context_length=self.config.model.context_length,
+            batch_size=self.config.trainer.batch_size,
+            num_workers=self.config.trainer.num_workers,
+            persistent_workers=True,
+            seed=self.config.data.seed,
+        )
+        val_loader = create_val_loader(
+            data_path=self.config.data.val_data_path,
+            context_length=self.config.model.context_length,
+            batch_size=self.config.trainer.batch_size,
+            num_workers=self.config.trainer.num_workers,
+            persistent_workers=True,
         )
 
-        for epoch in range(self.config.trainer.num_epochs):
-            for _ in range(0, len(self.train_data) - 1, self.config.trainer.batch_size):
-                if self.config.trainer.max_steps and self.step >= self.config.trainer.max_steps:
-                    break
+        total_steps = self.config.trainer.max_steps
+        if total_steps is None:
+            if self.config.trainer.num_epochs is None:
+                raise ValueError("Either trainer.max_steps or trainer.num_epochs must be specified.")
+            total_steps = int(self.config.trainer.num_epochs * len(train_loader))
+            logger.info(
+                f"max_steps not specified, training for {total_steps} steps ({self.config.trainer.num_epochs} epochs)."
+            )
 
-                start_time = time.perf_counter()
+        train_iter = iter(self._get_infinite_loader(train_loader))
 
-                lr = lr_cosine_schedule(
-                    it=self.step,
-                    max_learning_rate=self.config.optimizer.learning_rate,
-                    min_learning_rate=self.config.optimizer.min_learning_rate,
-                    tw=self.config.optimizer.warmup_steps,
-                    tc=total_steps,
+        self.model.train()
+
+        while self.step < total_steps:
+            start_time = time.perf_counter()
+            x, y = next(train_iter)
+
+            lr = lr_cosine_schedule(
+                it=self.step,
+                max_learning_rate=self.config.optimizer.learning_rate,
+                min_learning_rate=self.config.optimizer.min_learning_rate,
+                tw=self.config.optimizer.warmup_steps,
+                tc=total_steps,
+            )
+            for param_group in self.optimizer.param_groups:
+                param_group["lr"] = lr
+
+            x = x.to(self.config.trainer.device, non_blocking=True)
+            y = y.to(self.config.trainer.device, non_blocking=True)
+            self.optimizer.zero_grad()
+            logits = self.model(x)
+            loss = cross_entropy(logits, y)
+            loss.backward()
+            self.optimizer.step()
+
+            end_time = time.perf_counter()
+
+            if self.step % self.config.trainer.log_period == 0:
+                logger.info(
+                    f"Step {self.step}, Loss: {loss.item():.4f}, "
+                    f"LR: {lr:.6f}, Time: {(end_time - start_time) * 1000:.2f}ms"
                 )
-                for param_group in self.optimizer.param_groups:
-                    param_group["lr"] = lr
+                wandb.log({"train/loss": loss.item(), "train/lr": lr, "step": self.step})
 
-                x, y = get_batch(
-                    self.train_data,
-                    self.config.trainer.batch_size,
-                    self.config.model.context_length,
-                    self.config.trainer.device,
-                )
+            if self.step > 0 and self.step % self.config.trainer.val_period == 0:
+                val_loss = self._validate(val_loader)
+                logger.info(f"Validation Loss: {val_loss:.4f}")
+                wandb.log({"val/loss": val_loss, "step": self.step})
 
-                self.optimizer.zero_grad()
-                logits = self.model(x)
-                loss = cross_entropy(logits, y)
-                loss.backward()
-                self.optimizer.step()
+                checkpoint_file = Path(self.config.trainer.checkpoint_path) / f"step_{self.step}.pt"
+                save_checkpoint(self.model, self.optimizer, self.step, checkpoint_file, config=asdict(self.config))
+                logger.info(f"Saved checkpoint to {checkpoint_file}")
 
-                end_time = time.perf_counter()
-
-                if self.step % self.config.trainer.log_period == 0:
-                    logger.info(
-                        f"Epoch {epoch}, Step {self.step}, Loss: {loss.item():.4f}, "
-                        f"LR: {lr:.6f}, Time: {(end_time - start_time) * 1000:.2f}ms"
-                    )
-                    wandb.log({"train/loss": loss.item(), "train/lr": lr, "step": self.step})
-
-                if self.step > 0 and self.step % self.config.trainer.val_period == 0:
-                    val_loss = self._validate()
-                    logger.info(f"Validation Loss: {val_loss:.4f}")
-                    wandb.log({"val/loss": val_loss, "step": self.step})
-
-                    checkpoint_file = Path(self.config.trainer.checkpoint_path) / f"step_{self.step}.pt"
-                    save_checkpoint(
-                        self.model,
-                        self.optimizer,
-                        self.step,
-                        checkpoint_file,
-                        config=asdict(self.config),
-                    )
-                    logger.info(f"Saved checkpoint to {checkpoint_file}")
-
-                self.step += 1
+            self.step += 1
 
         final_checkpoint_path = Path(self.config.trainer.checkpoint_path) / "final.pt"
         save_checkpoint(

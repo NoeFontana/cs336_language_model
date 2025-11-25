@@ -1,6 +1,6 @@
 batch_size: 64
 num_epochs: 1
-max_steps: null
+max_steps: 1_000_000
 device: "cuda"
 log_period: 50
 val_period: 1000
