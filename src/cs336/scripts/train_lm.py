@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 from cs336.checkpoint import save_checkpoint
 from cs336.data import create_train_loader, create_val_loader
 from cs336.loss import cross_entropy
+from cs336.optim.clip import gradient_clipping
 from cs336.optim.scheduler import lr_cosine_schedule
 from cs336.transformer import TransformerLM
 
@@ -190,8 +191,8 @@ class Trainer:
             )
 
         train_iter = iter(self._get_infinite_loader(train_loader))
-
         self.model.train()
+        scaler = torch.GradScaler()
 
         while self.step < total_steps:
             start_time = time.perf_counter()
@@ -209,11 +210,18 @@ class Trainer:
 
             x = x.to(self.config.trainer.device, non_blocking=True)
             y = y.to(self.config.trainer.device, non_blocking=True)
-            self.optimizer.zero_grad()
-            logits = self.model(x)
-            loss = cross_entropy(logits, y)
-            loss.backward()
-            self.optimizer.step()
+            self.optimizer.zero_grad(True)
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                logits = self.model(x)
+                loss = cross_entropy(logits, y)
+
+            scaler.scale(loss).backward()
+            scaler.unscale_(self.optimizer)
+
+            gradient_clipping(self.model.parameters(), 1.0)
+
+            scaler.step(self.optimizer)
+            scaler.update()
 
             end_time = time.perf_counter()
 
