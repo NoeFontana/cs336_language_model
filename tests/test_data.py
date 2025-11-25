@@ -1,10 +1,13 @@
 import math
+import os
 from collections import Counter
 
 import numpy as np
 import pytest
+import torch
 
 from cs336.adapters import run_get_batch
+from cs336.data import create_train_loader
 
 
 def test_get_batch():
@@ -70,3 +73,37 @@ def test_get_batch():
             device="cuda:99",
         )
         assert "CUDA error" in str(excinfo.value) or "Torch not compiled with CUDA enabled" in str(excinfo.value)
+
+
+REAL_DATA_PATH = os.path.expanduser("~/datasets/cs336/owt_train.bin")
+
+
+@pytest.mark.skipif(not os.path.exists(REAL_DATA_PATH), reason="Real dataset not found")
+def test_dataloader_with_real_data():
+    """Integration test for the dataloader with a real dataset."""
+    context_length = 128
+    batch_size = 64
+
+    dataloader = create_train_loader(
+        data_path=REAL_DATA_PATH,
+        context_length=context_length,
+        batch_size=batch_size,
+        num_workers=2,
+        pin_memory=True,
+        persistent_workers=True,
+    )
+
+    num_batches_to_check = 100
+    for i, (inputs, targets) in enumerate(dataloader):
+        if i >= num_batches_to_check:
+            break
+
+        assert inputs.shape == (batch_size, context_length)
+        assert targets.shape == (batch_size, context_length)
+
+        assert inputs.dtype == torch.long
+        assert targets.dtype == torch.long
+
+        assert torch.equal(inputs[:, 1:], targets[:, :-1])
+
+    del dataloader
