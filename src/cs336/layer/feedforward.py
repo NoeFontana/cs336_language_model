@@ -8,6 +8,35 @@ def silu(x: torch.Tensor) -> torch.Tensor:
     return x * torch.sigmoid(x)
 
 
+class FFNReLUSquared(nn.Module):
+    """Implements the ReLU Squared feed-forward layer.
+
+    See: https://arxiv.org/abs/2109.08668
+    """
+
+    def __init__(self, d_model: int, d_ff: int) -> None:
+        """Initializes the FFNReLUSquared layer.
+
+        Args:
+            d_model: The dimensionality of the input and output.
+            d_ff: The inner dimension of the feed-forward layer.
+        """
+        super().__init__()
+        self.w1 = Linear(d_model, d_ff)
+        self.w2 = Linear(d_ff, d_model)
+        self.scaling_factor = d_ff**-0.5  # ty: ignore[unresolved-attribute]
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Performs the forward pass of the ReLU Squared layer.
+
+        Args:
+            x: The input tensor of shape (..., d_model).
+        Returns:
+            The output tensor of shape (..., d_model).
+        """
+        return self.w2(torch.relu(self.w1(x)).pow(2) * self.scaling_factor)
+
+
 class FeedForward(nn.Module):
     """Implements the SwiGLU feed-forward layer.
 
