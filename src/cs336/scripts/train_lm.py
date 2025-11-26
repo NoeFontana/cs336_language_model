@@ -7,13 +7,13 @@ from pathlib import Path
 
 import hydra
 import torch
-import torch.optim as optim
 import wandb
 from omegaconf import DictConfig
 
 from cs336.checkpoint import save_checkpoint
 from cs336.data import create_train_loader, create_val_loader
 from cs336.loss.cross_entropy import CrossEntropyLoss
+from cs336.optim.adamw import AdamW
 from cs336.optim.clip import gradient_clipping
 from cs336.optim.scheduler import lr_cosine_schedule
 from cs336.transformer import TransformerLM
@@ -140,7 +140,7 @@ class Trainer:
             self.model.compile()
             self.loss.compile()
 
-        self.optimizer = optim.AdamW(
+        self.optimizer = AdamW(
             self.model.parameters(),
             lr=self.config.optimizer.learning_rate,
             weight_decay=self.config.optimizer.weight_decay,
