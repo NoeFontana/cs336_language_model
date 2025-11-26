@@ -25,7 +25,7 @@ from cs336.layer.transformer import (
     scaled_dot_product_attention,
     softmax,
 )
-from cs336.loss import cross_entropy
+from cs336.loss.cross_entropy import cross_entropy
 from cs336.merge import merge
 from cs336.optim.adamw import AdamW
 from cs336.optim.clip import gradient_clipping
