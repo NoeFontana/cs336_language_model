@@ -90,10 +90,6 @@ train-owt-tokenizer:
 tokenize-dataset: ## Tokenize the default dataset using the default tokenizer
 	PYTHONPATH=src uv run src/cs336/scripts/tokenize_dataset.py
 
-train-lm:
-	PYTHONPATH=src uv run src/cs336/scripts/train_lm.py
-
-
 docker-build: ## Build the Docker image locally
 	@echo "🛠️  Building Docker image: $(DOCKER_IMAGE):latest..."
 	docker build -t $(DOCKER_IMAGE):latest .
