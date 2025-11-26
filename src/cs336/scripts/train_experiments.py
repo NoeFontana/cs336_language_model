@@ -28,6 +28,7 @@ from cs336.scripts.train_lm import (
 )
 
 torch.set_float32_matmul_precision("high")
+torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.benchmark = True
 
 # Set up a logger for this script
