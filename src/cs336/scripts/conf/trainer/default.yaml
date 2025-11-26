@@ -6,5 +6,5 @@ log_period: 50
 val_period: 1000
 checkpoint_path: "checkpoints"
 resume_from_checkpoint: null
-wandb_project: "cs336-language-model"
+wandb_project: "cs336-owt"
 wandb_run_name: null
