@@ -12,7 +12,7 @@ from omegaconf import DictConfig
 
 from cs336.checkpoint import save_checkpoint
 from cs336.data import create_train_loader, create_val_loader
-from cs336.loss import cross_entropy
+from cs336.loss.cross_entropy import CrossEntropyLoss
 from cs336.optim.clip import gradient_clipping
 from cs336.optim.scheduler import lr_cosine_schedule
 from cs336.transformer import TransformerLM
@@ -29,6 +29,7 @@ class ModelConfig:
     num_heads: int = 8
     num_layers: int = 6
     theta: float = 10000.0
+    ffn_type: str = "swiglu"
 
 
 @dataclass(frozen=True)
@@ -117,11 +118,15 @@ class Trainer:
             num_heads=self.config.model.num_heads,
             num_layers=self.config.model.num_layers,
             theta=self.config.model.theta,
+            ffn_type=self.config.model.ffn_type,
         ).to(self.config.trainer.device)
+        self.loss: torch.nn.Module = CrossEntropyLoss().to(self.config.trainer.device)
 
         if self.config.trainer.use_torch_compile:
             logger.info("Compiling model with torch.compile...")
             self.model.compile()
+            self.loss.compile()
+
         self.optimizer = optim.AdamW(
             self.model.parameters(),
             lr=self.config.optimizer.learning_rate,
@@ -155,7 +160,7 @@ class Trainer:
             for x, y in val_loader:
                 x = x.to(device, non_blocking=True)
                 y = y.to(device, non_blocking=True)
-                val_loss = cross_entropy(self.model(x), y)
+                val_loss = self.loss(self.model(x), y)
                 total_val_loss += val_loss.item()
                 num_val_batches += 1
         self.model.train()
@@ -213,7 +218,7 @@ class Trainer:
             self.optimizer.zero_grad(True)
             with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
                 logits = self.model(x)
-                loss = cross_entropy(logits, y)
+                loss = self.loss(logits, y)
 
             scaler.scale(loss).backward()
             scaler.unscale_(self.optimizer)

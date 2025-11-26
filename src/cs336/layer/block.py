@@ -2,14 +2,22 @@ import torch
 from torch import nn
 
 from .attention import MHSA
-from .feedforward import FeedForward
+from .feedforward import FeedForward, FFNReLUSquared, FFNSiLU
 from .normalization import RMSNorm
 
 
 class TransformerBlock(nn.Module):
     """Implements a (pre-norm) Transformer block."""
 
-    def __init__(self, d_model: int, num_heads: int, d_ff: int, max_seq_len: int, theta: float | None = None) -> None:
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        max_seq_len: int,
+        theta: float | None = None,
+        ffn_type: str = "swiglu",
+    ) -> None:
         """Initializes the TransformerBlock.
 
         Args:
@@ -17,12 +25,24 @@ class TransformerBlock(nn.Module):
             num_heads: The number of attention heads.
             d_ff: The inner dimension of the feed-forward layer.
             max_seq_len: The maximum sequence length.
+            theta: The base for the geometric progression of frequencies of RoPE.
+            ffn_type: The type of feed-forward network to use.
+                Options: "swiglu" (default), "relu_squared", "silu".
         """
         super().__init__()
         self.ln1 = RMSNorm(d_model)
         self.attn = MHSA(d_model, num_heads, max_seq_len, theta)
         self.ln2 = RMSNorm(d_model)
-        self.ffn = FeedForward(d_model, d_ff)
+
+        self.ffn: FeedForward | FFNReLUSquared | FFNSiLU
+        if ffn_type == "swiglu":
+            self.ffn = FeedForward(d_model, d_ff)
+        elif ffn_type == "relu_squared":
+            self.ffn = FFNReLUSquared(d_model, d_ff)
+        elif ffn_type == "silu":
+            self.ffn = FFNSiLU(d_model, d_ff)
+        else:
+            raise ValueError(f"Unknown ffn_type: {ffn_type}")
 
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor | None = None) -> torch.Tensor:
         """Performs the forward pass of the Transformer block.

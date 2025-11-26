@@ -8,7 +8,15 @@ class TransformerLM(nn.Module):
     """A Transformer-based language model."""
 
     def __init__(
-        self, vocab_size: int, num_layers: int, d_model: int, num_heads: int, d_ff: int, max_seq_len: int, theta: float
+        self,
+        vocab_size: int,
+        num_layers: int,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        max_seq_len: int,
+        theta: float,
+        ffn_type: str = "swiglu",
     ) -> None:
         """Initializes the Transformer Language Model.
 
@@ -21,13 +29,17 @@ class TransformerLM(nn.Module):
             max_seq_len: The maximum sequence length for pre-computing positional
                 embeddings.
             theta: The base for the rotary positional embeddings (RoPE).
+            ffn_type: The type of feed-forward network to use.
         """
         super().__init__()
 
         self.d_model = d_model  # ty: ignore[unresolved-attribute]
         self.embedding = layer.Embedding(vocab_size, d_model)
         self.transformer_blocks = nn.ModuleList(
-            [layer.TransformerBlock(d_model, num_heads, d_ff, max_seq_len, theta) for _ in range(num_layers)]
+            [
+                layer.TransformerBlock(d_model, num_heads, d_ff, max_seq_len, theta, ffn_type=ffn_type)
+                for _ in range(num_layers)
+            ]
         )
         self.out_norm = layer.RMSNorm(d_model)
         self.out_linear = layer.Linear(d_model, vocab_size)
