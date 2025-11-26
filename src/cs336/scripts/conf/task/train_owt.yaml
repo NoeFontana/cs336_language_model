@@ -3,5 +3,6 @@ defaults:
   - /optimizer@optimizer: owt
   - /data@data: owt
   - /trainer@trainer: owt
+  - /profiler@profiler: default
 
 name: train_lm

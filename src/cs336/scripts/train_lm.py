@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import time
 from collections.abc import Iterable
@@ -64,11 +65,22 @@ class TrainerConfig:
 
 
 @dataclass(frozen=True)
+class ProfilerConfig:
+    enabled: bool = False
+    wait: int = 5
+    warmup: int = 2
+    active: int = 3
+    repeat: int = 3
+    dirpath: str = "tb_logs"
+
+
+@dataclass(frozen=True)
 class ExperimentConfig:
     model: ModelConfig
     optimizer: OptimizerConfig
     data: DataConfig
     trainer: TrainerConfig
+    profiler: ProfilerConfig
 
 
 class Trainer:
@@ -107,6 +119,7 @@ class Trainer:
                     optimizer=OptimizerConfig(**loaded_config["optimizer"]),
                     data=DataConfig(**loaded_config["data"]),
                     trainer=TrainerConfig(**loaded_config["trainer"]),
+                    profiler=ProfilerConfig(**loaded_config["profiler"]),
                 )
 
         logger.info("Setting up model and optimizer...")
@@ -199,54 +212,75 @@ class Trainer:
         self.model.train()
         scaler = torch.GradScaler()
 
-        while self.step < total_steps:
-            start_time = time.perf_counter()
-            x, y = next(train_iter)
-
-            lr = lr_cosine_schedule(
-                it=self.step,
-                max_learning_rate=self.config.optimizer.learning_rate,
-                min_learning_rate=self.config.optimizer.min_learning_rate,
-                tw=self.config.optimizer.warmup_steps,
-                tc=total_steps,
+        profiler_context = (
+            torch.profiler.profile(
+                schedule=torch.profiler.schedule(
+                    wait=self.config.profiler.wait,
+                    warmup=self.config.profiler.warmup,
+                    active=self.config.profiler.active,
+                    repeat=self.config.profiler.repeat,
+                ),
+                on_trace_ready=torch.profiler.tensorboard_trace_handler(self.config.profiler.dirpath),
+                record_shapes=True,
+                profile_memory=True,
+                with_stack=False,  # DISABLE this to reduce overhead
+                with_flops=True,  # ENABLE this to see Model FLOPS Utilization (MFU)
             )
-            for param_group in self.optimizer.param_groups:
-                param_group["lr"] = lr
+            if self.config.profiler.enabled
+            else contextlib.nullcontext()
+        )
 
-            x = x.to(self.config.trainer.device, non_blocking=True)
-            y = y.to(self.config.trainer.device, non_blocking=True)
-            self.optimizer.zero_grad(True)
-            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-                logits = self.model(x)
-                loss = self.loss(logits, y)
+        with profiler_context as prof:
+            while self.step < total_steps:
+                start_time = time.perf_counter()
+                x, y = next(train_iter)
 
-            scaler.scale(loss).backward()
-            scaler.unscale_(self.optimizer)
-
-            gradient_clipping(self.model.parameters(), 1.0)
-
-            scaler.step(self.optimizer)
-            scaler.update()
-
-            end_time = time.perf_counter()
-
-            if self.step % self.config.trainer.log_period == 0:
-                logger.info(
-                    f"Step {self.step}, Loss: {loss.item():.4f}, "
-                    f"LR: {lr:.6f}, Time: {(end_time - start_time) * 1000:.2f}ms"
+                lr = lr_cosine_schedule(
+                    it=self.step,
+                    max_learning_rate=self.config.optimizer.learning_rate,
+                    min_learning_rate=self.config.optimizer.min_learning_rate,
+                    tw=self.config.optimizer.warmup_steps,
+                    tc=total_steps,
                 )
-                wandb.log({"train/loss": loss.item(), "train/lr": lr, "step": self.step})
+                for param_group in self.optimizer.param_groups:
+                    param_group["lr"] = lr
 
-            if self.step > 0 and self.step % self.config.trainer.val_period == 0:
-                val_loss = self._validate(val_loader)
-                logger.info(f"Validation Loss: {val_loss:.4f}")
-                wandb.log({"val/loss": val_loss, "step": self.step})
+                x = x.to(self.config.trainer.device, non_blocking=True)
+                y = y.to(self.config.trainer.device, non_blocking=True)
+                self.optimizer.zero_grad(True)
+                with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                    logits = self.model(x)
+                    loss = self.loss(logits, y)
 
-                checkpoint_file = Path(self.config.trainer.checkpoint_path) / f"step_{self.step}.pt"
-                save_checkpoint(self.model, self.optimizer, self.step, checkpoint_file, config=asdict(self.config))
-                logger.info(f"Saved checkpoint to {checkpoint_file}")
+                scaler.scale(loss).backward()
+                scaler.unscale_(self.optimizer)
 
-            self.step += 1
+                gradient_clipping(self.model.parameters(), 1.0)
+
+                scaler.step(self.optimizer)
+                scaler.update()
+
+                end_time = time.perf_counter()
+
+                if self.step % self.config.trainer.log_period == 0:
+                    logger.info(
+                        f"Step {self.step}, Loss: {loss.item():.4f}, "
+                        f"LR: {lr:.6f}, Time: {(end_time - start_time) * 1000:.2f}ms"
+                    )
+                    wandb.log({"train/loss": loss.item(), "train/lr": lr, "step": self.step})
+
+                if self.step > 0 and self.step % self.config.trainer.val_period == 0:
+                    val_loss = self._validate(val_loader)
+                    logger.info(f"Validation Loss: {val_loss:.4f}")
+                    wandb.log({"val/loss": val_loss, "step": self.step})
+
+                    checkpoint_file = Path(self.config.trainer.checkpoint_path) / f"step_{self.step}.pt"
+                    save_checkpoint(self.model, self.optimizer, self.step, checkpoint_file, config=asdict(self.config))
+                    logger.info(f"Saved checkpoint to {checkpoint_file}")
+
+                self.step += 1
+                if self.config.profiler.enabled:
+                    prof.step()  # type: ignore[possibly-missing-attribute,union-attr]
 
         final_checkpoint_path = Path(self.config.trainer.checkpoint_path) / "final.pt"
         save_checkpoint(
@@ -276,6 +310,7 @@ def main(cfg: DictConfig) -> None:
         optimizer=OptimizerConfig(**cfg.optimizer),
         data=DataConfig(**cfg.data),
         trainer=TrainerConfig(**cfg.trainer),
+        profiler=ProfilerConfig(**cfg.profiler),
     )
 
     trainer = Trainer(config)

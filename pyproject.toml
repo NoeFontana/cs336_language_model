@@ -68,6 +68,8 @@ dev = [
     "pytest-benchmark>=5.2.0",
     "ruff>=0.14.3",
     "scalene>=1.5.55",
+    "tensorboard>=2.20.0",
+    "torch-tb-profiler>=0.4.3",
     "types-regex>=2025.11.3.20251106",
 ]
 docs = [
