@@ -29,6 +29,7 @@ class ModelConfig:
     num_heads: int = 8
     num_layers: int = 6
     theta: float = 10000.0
+    ffn_type: str = "swiglu"
 
 
 @dataclass(frozen=True)
@@ -117,6 +118,7 @@ class Trainer:
             num_heads=self.config.model.num_heads,
             num_layers=self.config.model.num_layers,
             theta=self.config.model.theta,
+            ffn_type=self.config.model.ffn_type,
         ).to(self.config.trainer.device)
         self.loss: torch.nn.Module = CrossEntropyLoss().to(self.config.trainer.device)
 
