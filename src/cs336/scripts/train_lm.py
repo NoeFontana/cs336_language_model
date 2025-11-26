@@ -258,7 +258,7 @@ class Trainer:
         wandb.finish()
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="conf", config_name="experiments")
 def main(cfg: DictConfig) -> None:
     """
     Main function for training a Transformer Language Model from the command line.
