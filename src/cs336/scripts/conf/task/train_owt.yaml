@@ -1,7 +1,7 @@
 defaults:
-  - /model@model: transformer
-  - /optimizer@optimizer: adamw
+  - /model@model: owt
+  - /optimizer@optimizer: owt
   - /data@data: owt
-  - /trainer@trainer: default
+  - /trainer@trainer: owt
 
 name: train_lm
