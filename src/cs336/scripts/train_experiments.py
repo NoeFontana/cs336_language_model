@@ -23,6 +23,7 @@ from cs336.scripts.train_lm import (
     ExperimentConfig,
     ModelConfig,
     OptimizerConfig,
+    ProfilerConfig,
     Trainer,
     TrainerConfig,
 )
@@ -110,12 +111,14 @@ def main(cfg: DictConfig) -> None:
             optimizer_config = OptimizerConfig(**task_cfg.optimizer)
             data_config = DataConfig(**data_kwargs)
             trainer_config = TrainerConfig(**trainer_kwargs)
+            profiler_config = ProfilerConfig(**task_cfg.profiler) if "profiler" in task_cfg else ProfilerConfig()
 
             config = ExperimentConfig(
                 model=model_config,
                 optimizer=optimizer_config,
                 data=data_config,
                 trainer=trainer_config,
+                profiler=profiler_config,
             )
 
             trainer = Trainer(config)

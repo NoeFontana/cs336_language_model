@@ -3,5 +3,6 @@ defaults:
   - /optimizer@optimizer: tinystories
   - /data@data: tinystories
   - /trainer@trainer: tinystories
+  - /profiler@profiler: default
 
 name: train_lm
