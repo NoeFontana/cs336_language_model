@@ -27,6 +27,7 @@ class AdamW(torch.optim.Optimizer):
         defaults = {"lr": lr, "betas": betas, "eps": eps, "weight_decay": weight_decay}
         super().__init__(params, defaults)
 
+    @torch.no_grad()
     def step(  # type: ignore[override]
         self,
         closure: Callable[[], float] | None = None,
@@ -47,12 +48,18 @@ class AdamW(torch.optim.Optimizer):
             eps = cast(float, group["eps"])
             weight_decay = cast(float, group["weight_decay"])
 
+            params = []
+            grads = []
+            exp_avgs = []
+            exp_avg_sqs = []
+
+            current_step = 0
+
             for p in group["params"]:
                 if p.grad is None:
                     continue
 
-                grad = p.grad.data
-                if grad.is_sparse:
+                if p.grad.is_sparse:
                     raise RuntimeError("AdamW does not support sparse gradients")
 
                 state = self.state[p]
@@ -65,20 +72,33 @@ class AdamW(torch.optim.Optimizer):
                     # Exponential moving average of squared gradient values
                     state["v"] = torch.zeros_like(p.data, memory_format=torch.preserve_format)
 
-                m, v = state["m"], state["v"]
-                t = state["t"] + 1
-                state["t"] = t
+                state["t"] += 1
+                current_step = state["t"]
 
-                m.mul_(beta1).add_(grad, alpha=1 - beta1)
-                v.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+                params.append(p)
+                grads.append(p.grad)
+                exp_avgs.append(state["m"])
+                exp_avg_sqs.append(state["v"])
+            if not params:
+                continue
 
-                bias_correction1 = 1 - beta1**t
-                bias_correction2 = 1 - beta2**t
+            torch._foreach_mul_(exp_avgs, beta1)
+            torch._foreach_add_(exp_avgs, grads, alpha=1 - beta1)
 
-                step_size = lr * math.sqrt(bias_correction2) / bias_correction1
+            torch._foreach_mul_(exp_avg_sqs, beta2)
+            torch._foreach_addcmul_(exp_avg_sqs, grads, grads, value=1 - beta2)
 
-                p.data.addcdiv_(m, v.sqrt().add_(eps), value=-step_size)
-                # Unlike PyTorch implementation, weight_decay is applied last
-                p.data.mul_(1 - lr * weight_decay)
+            bias_correction1 = 1 - beta1**current_step
+            bias_correction2 = 1 - beta2**current_step
+
+            step_size = lr * math.sqrt(bias_correction2) / bias_correction1
+
+            # Grad step
+            denom = torch._foreach_sqrt(exp_avg_sqs)
+            torch._foreach_add_(denom, eps)
+            torch._foreach_addcdiv_(params, exp_avgs, denom, value=-step_size)
+
+            # Weight decay step
+            torch._foreach_mul_(params, 1 - lr * weight_decay)
 
         return loss
