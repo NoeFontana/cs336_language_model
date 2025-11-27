@@ -17,6 +17,7 @@ class TransformerBlock(nn.Module):
         max_seq_len: int,
         theta: float | None = None,
         ffn_type: str = "swiglu",
+        qk_norm: bool = False,
     ) -> None:
         """Initializes the TransformerBlock.
 
@@ -28,10 +29,11 @@ class TransformerBlock(nn.Module):
             theta: The base for the geometric progression of frequencies of RoPE.
             ffn_type: The type of feed-forward network to use.
                 Options: "swiglu" (default), "relu_squared", "silu".
+            qk_norm: Whether to apply RMSNorm to the queries and keys.
         """
         super().__init__()
         self.ln1 = RMSNorm(d_model)
-        self.attn = MHSA(d_model, num_heads, max_seq_len, theta)
+        self.attn = MHSA(d_model, num_heads, max_seq_len, theta, qk_norm=qk_norm)
         self.ln2 = RMSNorm(d_model)
 
         self.ffn: FeedForward | FFNReLUSquared | FFNSiLU
