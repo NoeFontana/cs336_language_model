@@ -2,3 +2,4 @@ learning_rate: 3e-4
 min_learning_rate: 3e-5
 weight_decay: 0.1
 warmup_steps: 2000
+name: adamw

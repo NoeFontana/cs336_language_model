@@ -19,10 +19,12 @@ from omegaconf import DictConfig, OmegaConf
 from cs336.scripts.tokenize_dataset import tokenize_dataset
 from cs336.scripts.train_bpe import train_and_save_bpe_tokenizer
 from cs336.scripts.train_lm import (
+    AdamWConfig,
+    BaseOptimizerConfig,
     DataConfig,
     ExperimentConfig,
     ModelConfig,
-    OptimizerConfig,
+    MuonConfig,
     ProfilerConfig,
     Trainer,
     TrainerConfig,
@@ -108,7 +110,14 @@ def main(cfg: DictConfig) -> None:
             trainer_kwargs = expand_paths(trainer_kwargs, ["checkpoint_path"])
 
             model_config = ModelConfig(**task_cfg.model)
-            optimizer_config = OptimizerConfig(**task_cfg.optimizer)
+
+            optimizer_config: BaseOptimizerConfig
+            opt_dict = task_cfg.optimizer
+            if opt_dict.get("name") == "muon":
+                optimizer_config = MuonConfig(**opt_dict)
+            else:
+                optimizer_config = AdamWConfig(**opt_dict)
+
             data_config = DataConfig(**data_kwargs)
             trainer_config = TrainerConfig(**trainer_kwargs)
             profiler_config = ProfilerConfig(**task_cfg.profiler) if "profiler" in task_cfg else ProfilerConfig()

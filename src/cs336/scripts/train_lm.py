@@ -7,14 +7,15 @@ from pathlib import Path
 
 import hydra
 import torch
+import torch.optim as optim
 import wandb
-from omegaconf import DictConfig
+from omegaconf import MISSING, DictConfig
 
 from cs336.checkpoint import save_checkpoint
 from cs336.data import create_train_loader, create_val_loader
 from cs336.loss.cross_entropy import CrossEntropyLoss
-from cs336.optim.adamw import AdamW
 from cs336.optim.clip import gradient_clipping
+from cs336.optim.muon import Muon
 from cs336.optim.scheduler import lr_cosine_schedule
 from cs336.transformer import TransformerLM
 
@@ -34,11 +35,27 @@ class ModelConfig:
 
 
 @dataclass(frozen=True)
-class OptimizerConfig:
+class BaseOptimizerConfig:
+    name: str = MISSING
     learning_rate: float = 3e-4
     min_learning_rate: float = 3e-5
     weight_decay: float = 0.1
     warmup_steps: int = 2000
+
+
+@dataclass(frozen=True)
+class AdamWConfig(BaseOptimizerConfig):
+    name: str = "adamw"
+
+
+@dataclass(frozen=True)
+class MuonConfig(BaseOptimizerConfig):
+    name: str = "muon"
+    muon_learning_rate: float = 0.02
+    muon_momentum: float = 0.95
+    muon_nesterov: bool = True
+    muon_ns_steps: int = 5
+    muon_weight_decay: float = 0.01
 
 
 @dataclass(frozen=True)
@@ -55,7 +72,7 @@ class TrainerConfig:
     max_steps: int = 1_000_000
     device: str = "cuda"
     log_period: int = 10
-    val_period: int = 500
+    val_period: int = 5_000_000
     checkpoint_path: str = "checkpoints"
     resume_from_checkpoint: str | None = None
     wandb_project: str = "cs336-language-model"
@@ -77,10 +94,60 @@ class ProfilerConfig:
 @dataclass(frozen=True)
 class ExperimentConfig:
     model: ModelConfig
-    optimizer: OptimizerConfig
+    optimizer: BaseOptimizerConfig
     data: DataConfig
     trainer: TrainerConfig
     profiler: ProfilerConfig
+
+
+def create_optimizer(model: torch.nn.Module, config: BaseOptimizerConfig) -> torch.optim.Optimizer:
+    """
+    Creates and configures the optimizer based on the provided configuration.
+    """
+    if config.name == "adamw":
+        return optim.AdamW(
+            model.parameters(),
+            lr=config.learning_rate,
+            weight_decay=config.weight_decay,
+        )
+    elif config.name == "muon":
+        assert isinstance(config, MuonConfig)
+
+        muon_params = []
+        adamw_params = []
+        for param_name, param in model.named_parameters():
+            # Treat parameters with 2 or more dimensions as Muon candidates, excluding embeddings
+            if param.ndim >= 2 and "embedding" not in param_name:
+                muon_params.append(param)
+            else:
+                adamw_params.append(param)
+
+        return Muon(
+            muon_params,
+            lr=config.muon_learning_rate,
+            momentum=config.muon_momentum,
+            nesterov=config.muon_nesterov,
+            ns_steps=config.muon_ns_steps,
+            weight_decay=config.muon_weight_decay,
+            adamw_params=adamw_params,
+            adamw_lr=config.learning_rate,
+            adamw_weight_decay=config.weight_decay,
+        )
+    else:
+        raise ValueError(f"Unknown optimizer: {config.name}")
+
+
+def get_optimizer_config(cfg: DictConfig) -> BaseOptimizerConfig:
+    """
+    Parses the Hydra config to return the appropriate OptimizerConfig dataclass.
+    """
+    opt_cfg_dict = cfg.optimizer
+    name = opt_cfg_dict.get("name")
+
+    if name == "muon":
+        return MuonConfig(**opt_cfg_dict)
+    # Default to AdamW for 'adamw' or fallback
+    return AdamWConfig(**opt_cfg_dict)
 
 
 class Trainer:
@@ -114,12 +181,23 @@ class Trainer:
             if "config" in loaded_checkpoint:
                 logger.info("Found config in checkpoint, updating configuration.")
                 loaded_config = loaded_checkpoint["config"]
+
+                # Reconstruct optimizer config correctly
+                opt_config_dict = loaded_config["optimizer"]
+                if opt_config_dict.get("name") == "muon":
+                    opt_config = MuonConfig(**opt_config_dict)
+                else:
+                    opt_config = AdamWConfig(**opt_config_dict)
+
+                # Check if profiler config exists in checkpoint (backward compatibility)
+                profiler_cfg = loaded_config.get("profiler", asdict(ProfilerConfig()))
+
                 self.config = ExperimentConfig(
                     model=ModelConfig(**loaded_config["model"]),
-                    optimizer=OptimizerConfig(**loaded_config["optimizer"]),
+                    optimizer=opt_config,
                     data=DataConfig(**loaded_config["data"]),
                     trainer=TrainerConfig(**loaded_config["trainer"]),
-                    profiler=ProfilerConfig(**loaded_config["profiler"]),
+                    profiler=ProfilerConfig(**profiler_cfg),
                 )
 
         logger.info("Setting up model and optimizer...")
@@ -140,11 +218,7 @@ class Trainer:
             self.model.compile()
             self.loss.compile()
 
-        self.optimizer = AdamW(
-            self.model.parameters(),
-            lr=self.config.optimizer.learning_rate,
-            weight_decay=self.config.optimizer.weight_decay,
-        )
+        self.optimizer = create_optimizer(self.model, self.config.optimizer)
         self.step = 0
 
         if loaded_checkpoint:
@@ -160,10 +234,7 @@ class Trainer:
             yield from loader
 
     def _validate(self, val_loader: Iterable[tuple[torch.Tensor, torch.Tensor]]) -> float:
-        """Runs a validation step and returns the loss.
-        Returns:
-            The validation loss.
-        """
+        """Runs a validation step and returns the loss."""
         logger.info("Running validation...")
         self.model.eval()
         device = self.config.trainer.device
@@ -235,15 +306,23 @@ class Trainer:
                 start_time = time.perf_counter()
                 x, y = next(train_iter)
 
-                lr = lr_cosine_schedule(
+                base_lr = lr_cosine_schedule(
                     it=self.step,
                     max_learning_rate=self.config.optimizer.learning_rate,
                     min_learning_rate=self.config.optimizer.min_learning_rate,
                     tw=self.config.optimizer.warmup_steps,
                     tc=total_steps,
                 )
+
+                # Update Learning Rate (Handling Muon)
                 for param_group in self.optimizer.param_groups:
-                    param_group["lr"] = lr
+                    if param_group.get("use_muon", False):
+                        if isinstance(self.config.optimizer, MuonConfig):
+                            param_group["lr"] = self.config.optimizer.muon_learning_rate * (
+                                base_lr / self.config.optimizer.learning_rate
+                            )
+                    else:
+                        param_group["lr"] = base_lr
 
                 x = x.to(self.config.trainer.device, non_blocking=True)
                 y = y.to(self.config.trainer.device, non_blocking=True)
@@ -265,9 +344,9 @@ class Trainer:
                 if self.step % self.config.trainer.log_period == 0:
                     logger.info(
                         f"Step {self.step}, Loss: {loss.item():.4f}, "
-                        f"LR: {lr:.6f}, Time: {(end_time - start_time) * 1000:.2f}ms"
+                        f"LR: {base_lr:.6f}, Time: {(end_time - start_time) * 1000:.2f}ms"
                     )
-                    wandb.log({"train/loss": loss.item(), "train/lr": lr, "step": self.step})
+                    wandb.log({"train/loss": loss.item(), "train/lr": base_lr, "step": self.step})
 
                 if self.step > 0 and self.step % self.config.trainer.val_period == 0:
                     val_loss = self._validate(val_loader)
@@ -279,6 +358,7 @@ class Trainer:
                     logger.info(f"Saved checkpoint to {checkpoint_file}")
 
                 self.step += 1
+
                 if self.config.profiler.enabled:
                     prof.step()  # type: ignore[possibly-missing-attribute,union-attr]
 
@@ -305,12 +385,23 @@ def main(cfg: DictConfig) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     # Instantiate the configuration object from the Hydra config
+    # We need to handle missing profiler config if older config format is used,
+    # but Hydra should handle defaults if we added them to yaml.
+    # Since we don't have a default profiler yaml, we should probably check if it's in cfg.
+    # Assuming cfg structure matches the dataclasses.
+
+    profiler_cfg = cfg.get("profiler")
+    if profiler_cfg is None:
+        profiler_config = ProfilerConfig()
+    else:
+        profiler_config = ProfilerConfig(**profiler_cfg)
+
     config = ExperimentConfig(
         model=ModelConfig(**cfg.model),
-        optimizer=OptimizerConfig(**cfg.optimizer),
+        optimizer=get_optimizer_config(cfg),
         data=DataConfig(**cfg.data),
         trainer=TrainerConfig(**cfg.trainer),
-        profiler=ProfilerConfig(**cfg.profiler),
+        profiler=profiler_config,
     )
 
     trainer = Trainer(config)
