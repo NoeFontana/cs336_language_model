@@ -32,6 +32,7 @@ class ModelConfig:
     num_layers: int = 6
     theta: float = 10000.0
     ffn_type: str = "swiglu"
+    qk_norm: bool = False
 
 
 @dataclass(frozen=True)
@@ -226,6 +227,7 @@ class Trainer:
             num_layers=self.config.model.num_layers,
             theta=self.config.model.theta,
             ffn_type=self.config.model.ffn_type,
+            qk_norm=self.config.model.qk_norm,
         ).to(self.config.trainer.device)
         self.loss: torch.nn.Module = CrossEntropyLoss().to(self.config.trainer.device)
 

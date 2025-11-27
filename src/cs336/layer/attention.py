@@ -3,6 +3,7 @@ from einops import einsum, rearrange
 from torch import nn
 
 from cs336.layer.linear import Linear
+from cs336.layer.normalization import RMSNorm
 
 
 class RotaryPositionalEmbedding(nn.Module):
@@ -105,7 +106,14 @@ class MHSA(nn.Module):
     See: https://arxiv.org/abs/1706.03762
     """
 
-    def __init__(self, d_model: int, num_heads: int, max_seq_len: int, theta: float | None = None) -> None:
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        max_seq_len: int,
+        theta: float | None = None,
+        qk_norm: bool = False,
+    ) -> None:
         """Initializes the MHSA layer.
 
         Args:
@@ -114,6 +122,7 @@ class MHSA(nn.Module):
             max_seq_len: The maximum sequence length for which to pre-compute
                 the rotary embeddings.
             theta: The base for the geometric progression of frequencies of RoPE.
+            qk_norm: Whether to apply RMSNorm to the queries and keys.
         """
         super().__init__()
         if d_model % num_heads != 0:
@@ -121,6 +130,7 @@ class MHSA(nn.Module):
 
         self.num_heads = num_heads  # ty: ignore[unresolved-attribute]
         self.d_head = d_model // num_heads  # ty: ignore[unresolved-attribute]
+        self.qk_norm = qk_norm  # ty: ignore[unresolved-attribute]
 
         self.qkv_proj = Linear(d_model, 3 * d_model)
 
@@ -133,6 +143,10 @@ class MHSA(nn.Module):
         self.rope: RotaryPositionalEmbedding | None = None
         if theta is not None:
             self.rope = RotaryPositionalEmbedding(theta, self.d_head, max_seq_len)
+
+        if self.qk_norm:
+            self.q_norm = RMSNorm(self.d_head)
+            self.k_norm = RMSNorm(self.d_head)
 
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor | None = None) -> torch.Tensor:
         """Performs the forward pass of the MHSA layer.
@@ -148,6 +162,10 @@ class MHSA(nn.Module):
 
         qkv_h = rearrange(qkv, "... s (three h d) -> three ... h s d", three=3, h=self.num_heads, d=self.d_head)
         q_h, k_h, v_h = qkv_h[0], qkv_h[1], qkv_h[2]
+
+        if self.qk_norm:
+            q_h = self.q_norm(q_h)
+            k_h = self.k_norm(k_h)
 
         seq_len = x.shape[-2]
         causal_mask = self.mask[:seq_len, :seq_len]

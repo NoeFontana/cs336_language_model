@@ -17,6 +17,7 @@ class TransformerLM(nn.Module):
         max_seq_len: int,
         theta: float,
         ffn_type: str = "swiglu",
+        qk_norm: bool = False,
     ) -> None:
         """Initializes the Transformer Language Model.
 
@@ -30,6 +31,7 @@ class TransformerLM(nn.Module):
                 embeddings.
             theta: The base for the rotary positional embeddings (RoPE).
             ffn_type: The type of feed-forward network to use.
+            qk_norm: Whether to apply RMSNorm to the queries and keys.
         """
         super().__init__()
 
@@ -37,7 +39,7 @@ class TransformerLM(nn.Module):
         self.embedding = layer.Embedding(vocab_size, d_model)
         self.transformer_blocks = nn.ModuleList(
             [
-                layer.TransformerBlock(d_model, num_heads, d_ff, max_seq_len, theta, ffn_type=ffn_type)
+                layer.TransformerBlock(d_model, num_heads, d_ff, max_seq_len, theta, ffn_type=ffn_type, qk_norm=qk_norm)
                 for _ in range(num_layers)
             ]
         )

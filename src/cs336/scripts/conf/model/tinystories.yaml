@@ -6,3 +6,4 @@ num_heads: 16
 num_layers: 4
 theta: 10000.0
 ffn_type: "swiglu"
+qk_norm: false
