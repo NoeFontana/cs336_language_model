@@ -22,13 +22,14 @@ class Embedding(nn.Module):
         """
         super().__init__()
 
+        std = 0.02
         self.embedding_matrix = nn.Parameter(
             nn.init.trunc_normal_(
                 torch.empty(size=(num_embeddings, embedding_dim), device=device, dtype=dtype),
                 mean=0,
-                std=1.0,
-                a=-3,
-                b=3,
+                std=std,
+                a=-3 * std,
+                b=3 * std,
             )
         )
 
