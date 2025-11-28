@@ -9,7 +9,7 @@ class Linear(Module):
     ) -> None:
         super().__init__()
 
-        std = 2 / (in_features + out_features)
+        std = (2 / (in_features + out_features)) ** 0.5
         self.weights = Parameter(
             torch.nn.init.trunc_normal_(
                 torch.empty(size=(out_features, in_features), device=device, dtype=dtype),
