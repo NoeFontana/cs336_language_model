@@ -3,7 +3,7 @@ num_epochs: 1
 max_steps: 1_000_000
 device: cuda
 log_period: 50
-val_period: 1000
+val_period: 10000
 checkpoint_path: checkpoints
 resume_from_checkpoint: null
 wandb_project: cs336-owt
