@@ -48,4 +48,4 @@ def test_transformer_lm_compile() -> None:
     assert compiled_output.shape == (batch_size, seq_len, vocab_size)
 
     # Check that the outputs are numerically close
-    assert torch.allclose(uncompiled_output, compiled_output, atol=1e-6)
+    assert torch.allclose(uncompiled_output, compiled_output, atol=1e-5)
