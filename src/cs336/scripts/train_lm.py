@@ -233,8 +233,8 @@ class Trainer:
 
         if self.config.trainer.use_torch_compile:
             logger.info("Compiling model with torch.compile...")
-            self.model.compile()
-            self.loss.compile()
+            self.model.compile(mode="max-autotune")
+            self.loss.compile(mode="max-autotune")
 
         self.optimizer = create_optimizer(self.model, self.config.optimizer)
         self.step = 0

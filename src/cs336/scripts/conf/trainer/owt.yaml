@@ -1,9 +1,9 @@
-batch_size: 64
-num_epochs: 1
-max_steps: 1_000_000
+batch_size: 256
+num_epochs: 1_000_000 # Infinite. We use max_steps to limit training
+max_steps: 14_950
 device: cuda
 log_period: 50
-val_period: 10000
+val_period: 14_949
 checkpoint_path: checkpoints
 resume_from_checkpoint: null
 wandb_project: cs336-owt
