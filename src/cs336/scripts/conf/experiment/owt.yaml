@@ -1,0 +1,6 @@
+# @package _global_
+defaults:
+  - /model: owt
+  - /optimizer: owt
+  - /data: owt
+  - /trainer: owt
