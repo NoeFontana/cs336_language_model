@@ -20,7 +20,7 @@ class RotaryPositionalEmbedding(nn.Module):
         super().__init__()
 
         positions = torch.arange(max_seq_len, device=device, dtype=torch.float)
-        inv_freq = 1.0 / (theta ** (torch.arange(0, d_k, 2, device=device, dtype=torch.float) / d_k))
+        inv_freq = torch.tensor(1.0) / (theta ** (torch.arange(0, d_k, 2, device=device, dtype=torch.float) / d_k))
         freqs = torch.outer(positions, inv_freq)
 
         self.cos_cached: torch.Tensor
@@ -46,7 +46,7 @@ class RotaryPositionalEmbedding(nn.Module):
         if cos.ndim == 3:
             cos = cos.unsqueeze(1)
             sin = sin.unsqueeze(1)
-        
+
         return self.apply_rotary_interleaved(x, cos, sin)
 
     def apply_rotary_interleaved(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
@@ -55,13 +55,13 @@ class RotaryPositionalEmbedding(nn.Module):
         (a + ib)(cos + isin) = (a*cos - b*sin) + i(a*sin + b*cos)
         """
         x_reshaped = x.view(*x.shape[:-1], -1, 2)
-        
+
         x_real = x_reshaped[..., 0]
         x_imag = x_reshaped[..., 1]
-        
+
         val_real = x_real * cos - x_imag * sin
         val_imag = x_real * sin + x_imag * cos
-        
+
         return torch.stack((val_real, val_imag), dim=-1).flatten(-2)
 
 
