@@ -24,15 +24,17 @@ class RotaryPositionalEmbedding(nn.Module):
         """
         super().__init__()
 
-        positions = torch.arange(max_seq_len + 1, device=device)
-        exponents = torch.arange(0, d_k, step=2, device=device) / d_k
-        thetas_k = 1 / torch.pow(theta, exponents)
+        positions = torch.arange(max_seq_len + 1, device=device, dtype=torch.float)
+        exponents = torch.arange(0, d_k, step=2, device=device, dtype=torch.float) / d_k
+        thetas_k = 1.0 / torch.pow(theta, exponents)
 
         freqs = torch.outer(positions, thetas_k)
-        freqs_cos_isine = torch.polar(torch.ones_like(freqs), freqs)
 
-        self.freqs_cos_isine: torch.Tensor
-        self.register_buffer("freqs_cos_isine", freqs_cos_isine, persistent=False)
+        self.cos_cached: torch.Tensor
+        self.sin_cached: torch.Tensor
+        freqs_interleaved = torch.repeat_interleave(freqs, 2, dim=-1)
+        self.register_buffer("cos_cached", freqs_interleaved.cos().to(dtype=torch.float32), persistent=False)
+        self.register_buffer("sin_cached", freqs_interleaved.sin().to(dtype=torch.float32), persistent=False)
 
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
         """Applies rotary positional embeddings to the input tensor.
@@ -46,12 +48,30 @@ class RotaryPositionalEmbedding(nn.Module):
             The input tensor with rotary positional embeddings applied, with the
             same shape as the input.
         """
-        x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
-        freqs_cos_isine = self.freqs_cos_isine[token_positions]
+        cos = self.cos_cached[token_positions]
+        sin = self.sin_cached[token_positions]
+        
+        return self.apply_rotary_interleaved(x, cos, sin)
 
-        x_rotated_complex = x_complex * freqs_cos_isine
-
-        return torch.view_as_real(x_rotated_complex).view(x.shape)
+    def apply_rotary_interleaved(self, x, cos, sin):
+        """
+        Manually implements complex multiplication for interleaved pairs:
+        (a + ib)(cos + isin) = (a*cos - b*sin) + i(a*sin + b*cos)
+        """
+        x_pairs = x.view(*x.shape[:-1], -1, 2)
+        
+        x_real = x_pairs[..., 0]
+        x_imag = x_pairs[..., 1]
+        
+        cos_reshaped = cos.view(*cos.shape[:-1], -1, 2)[..., 0]
+        sin_reshaped = sin.view(*sin.shape[:-1], -1, 2)[..., 0]
+        
+        val_real = x_real * cos_reshaped - x_imag * sin_reshaped
+        val_imag = x_real * sin_reshaped + x_imag * cos_reshaped
+        
+        rotated = torch.stack((val_real, val_imag), dim=-1).flatten(-2)
+        
+        return rotated
 
 
 def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
