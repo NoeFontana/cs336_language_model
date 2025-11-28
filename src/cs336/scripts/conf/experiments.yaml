@@ -1,6 +1,8 @@
 defaults:
   - _self_
-  - task: train_owt
+  - task: train_lm
+  - experiment: owt
+  - profiler: default
 
 hydra:
   job:

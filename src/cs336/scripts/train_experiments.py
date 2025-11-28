@@ -100,19 +100,16 @@ def main(cfg: DictConfig) -> None:
                         config_dict[k] = str(Path(config_dict[k]).expanduser())
                 return config_dict
 
-            # Configuration is nested under 'task'
-            task_cfg = cfg.task
-
-            data_kwargs = OmegaConf.to_container(task_cfg.data, resolve=True)
+            data_kwargs = OmegaConf.to_container(cfg.data, resolve=True)
             data_kwargs = expand_paths(data_kwargs, ["train_data_path", "val_data_path"])
 
-            trainer_kwargs = OmegaConf.to_container(task_cfg.trainer, resolve=True)
+            trainer_kwargs = OmegaConf.to_container(cfg.trainer, resolve=True)
             trainer_kwargs = expand_paths(trainer_kwargs, ["checkpoint_path"])
 
-            model_config = ModelConfig(**task_cfg.model)
+            model_config = ModelConfig(**cfg.model)
 
             optimizer_config: BaseOptimizerConfig
-            opt_dict = task_cfg.optimizer
+            opt_dict = cfg.optimizer
             if opt_dict.get("name") == "muon":
                 optimizer_config = MuonConfig(**opt_dict)
             else:
@@ -120,7 +117,7 @@ def main(cfg: DictConfig) -> None:
 
             data_config = DataConfig(**data_kwargs)
             trainer_config = TrainerConfig(**trainer_kwargs)
-            profiler_config = ProfilerConfig(**task_cfg.profiler) if "profiler" in task_cfg else ProfilerConfig()
+            profiler_config = ProfilerConfig(**cfg.profiler) if "profiler" in cfg else ProfilerConfig()
 
             config = ExperimentConfig(
                 model=model_config,
