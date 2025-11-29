@@ -14,7 +14,7 @@ else:
 
         log_message = "Using Rust implementation of 'merge'"
     else:
-        from cs336.merge.merge_py import merge
+        from cs336_basics.merge.merge_py import merge
 
         log_message = "Using Python implementation of 'merge'"
         if use_native and not native_available:

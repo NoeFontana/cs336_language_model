@@ -1,14 +1,10 @@
-import os
-import sys
-
 import torch
 import torch.nn as nn
 
 # Ensure src is in python path
-sys.path.append(os.path.abspath("src"))
-
+from cs336_basics.config import AdamWConfig, MuonConfig
+from cs336_basics.factory import create_optimizer
 from cs336_basics.layer import Embedding, Linear, RMSNorm
-from cs336_basics.scripts.train_lm import AdamWConfig, MuonConfig, create_optimizer
 
 
 class MockModel(nn.Module):
