@@ -1,0 +1,10 @@
+batch_size: 64
+num_epochs: 1
+max_steps: 20000
+device: cuda
+log_period: 50
+val_period: 500
+checkpoint_path: checkpoints/tinystories
+resume_from_checkpoint: null
+wandb_project: tiny-stories-experiments
+wandb_run_name: null

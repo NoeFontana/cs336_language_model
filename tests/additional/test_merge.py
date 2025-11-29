@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 
-from cs336.merge import merge
-from cs336.merge.merge_py import merge as py_merge
+from cs336_basics.merge import merge
+from cs336_basics.merge.merge_py import merge as py_merge
 
 NATIVE_EXTENSIONS_AVAILABLE = importlib.util.find_spec("cs336_native") is not None
 

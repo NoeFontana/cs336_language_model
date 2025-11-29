@@ -1,6 +1,0 @@
-# @package _global_
-defaults:
-  - /model: tinystories
-  - /optimizer: tinystories
-  - /data: tinystories
-  - /trainer: tinystories

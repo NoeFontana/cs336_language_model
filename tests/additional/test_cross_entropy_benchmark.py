@@ -2,7 +2,7 @@ import pytest
 import torch
 from pytest_benchmark.fixture import BenchmarkFixture
 
-from cs336.loss.cross_entropy import CrossEntropyLoss, cross_entropy
+from cs336_basics.loss.cross_entropy import CrossEntropyLoss, cross_entropy
 
 # OWT parameters (expected size)
 OWT_BATCH_SIZE: int = 64

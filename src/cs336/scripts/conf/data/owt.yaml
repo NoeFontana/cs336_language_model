@@ -1,2 +1,0 @@
-train_data_path: ~/datasets/cs336/owt_train.bin
-val_data_path: ~/datasets/cs336/owt_valid.bin

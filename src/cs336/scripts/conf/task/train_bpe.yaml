@@ -1,5 +1,0 @@
-name: train_bpe
-input_path: ~/datasets/cs336/TinyStoriesV2-GPT4-train.txt
-vocab_size: 10000
-special_tokens: ["<|endoftext|>"]
-output_prefix: ~/datasets/cs336/tinystories_tokenizer
