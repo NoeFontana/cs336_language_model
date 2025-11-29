@@ -1,6 +1,6 @@
 import torch
 
-from cs336.layer.feedforward import FFNReLUSquared
+from cs336_basics.layer.feedforward import FFNReLUSquared
 
 
 def test_ffn_relu_squared_shape() -> None:

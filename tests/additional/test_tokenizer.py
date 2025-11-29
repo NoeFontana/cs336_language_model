@@ -4,7 +4,7 @@ import base64
 import json
 from pathlib import Path
 
-from cs336.tokenizer import Tokenizer
+from cs336_basics.tokenizer import Tokenizer
 
 
 def test_init():

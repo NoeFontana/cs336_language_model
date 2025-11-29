@@ -1,6 +1,6 @@
 import torch
 
-from cs336.optim.muon import Muon
+from cs336_basics.optim.muon import Muon
 
 
 def test_muon_initialization() -> None:

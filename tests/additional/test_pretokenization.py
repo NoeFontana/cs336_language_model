@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 
-from cs336.pretokenization import chunked_pretokenization
+from cs336_basics.pretokenization import chunked_pretokenization
 
 
 @pytest.mark.slow

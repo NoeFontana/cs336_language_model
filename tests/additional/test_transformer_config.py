@@ -1,7 +1,7 @@
 import pytest
 
-from cs336.layer.feedforward import FeedForward, FFNReLUSquared, FFNSiLU
-from cs336.transformer import TransformerLM
+from cs336_basics.layer.feedforward import FeedForward, FFNReLUSquared, FFNSiLU
+from cs336_basics.transformer import TransformerLM
 
 
 def test_transformer_lm_ffn_selection() -> None:
