@@ -2,156 +2,33 @@ import contextlib
 import logging
 import time
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from pathlib import Path
 
 import hydra
 import torch
-import torch.optim as optim
 import wandb
-from omegaconf import MISSING, DictConfig
+from omegaconf import DictConfig
 
 from cs336_basics.checkpoint import save_checkpoint
+from cs336_basics.config import (
+    AdamWConfig,
+    BaseOptimizerConfig,
+    DataConfig,
+    ExperimentConfig,
+    ModelConfig,
+    MuonConfig,
+    ProfilerConfig,
+    TrainerConfig,
+)
 from cs336_basics.data import create_train_loader, create_val_loader
+from cs336_basics.factory import create_optimizer
 from cs336_basics.loss.cross_entropy import CrossEntropyLoss
 from cs336_basics.optim.clip import gradient_clipping
-from cs336_basics.optim.muon import Muon
 from cs336_basics.optim.scheduler import lr_cosine_schedule
 from cs336_basics.transformer import TransformerLM
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class ModelConfig:
-    vocab_size: int = 32000
-    context_length: int = 256
-    d_model: int = 512
-    d_ff: int = 2048
-    num_heads: int = 8
-    num_layers: int = 6
-    theta: float = 10000.0
-    ffn_type: str = "swiglu"
-    qk_norm: bool = False
-
-
-@dataclass(frozen=True)
-class BaseOptimizerConfig:
-    name: str = MISSING
-    learning_rate: float = 3e-4
-    min_learning_rate: float = 3e-5
-    weight_decay: float = 0.1
-    warmup_steps: int = 2000
-
-
-@dataclass(frozen=True)
-class AdamWConfig(BaseOptimizerConfig):
-    name: str = "adamw"
-    beta1: float = 0.9
-    beta2: float = 0.999
-    eps: float = 1e-8
-
-
-@dataclass(frozen=True)
-class MuonConfig(BaseOptimizerConfig):
-    name: str = "muon"
-    muon_learning_rate: float = 0.02
-    muon_momentum: float = 0.95
-    muon_nesterov: bool = True
-    muon_ns_steps: int = 5
-    muon_weight_decay: float = 0.01
-    adamw_beta1: float = 0.9
-    adamw_beta2: float = 0.999
-    adamw_eps: float = 1e-8
-
-
-@dataclass(frozen=True)
-class DataConfig:
-    train_data_path: str = "./results/owt_train.bin"
-    val_data_path: str = "./results/owt_valid.bin"
-    seed: int = 42
-
-
-@dataclass(frozen=True)
-class TrainerConfig:
-    batch_size: int = 64
-    num_epochs: int = 1
-    max_steps: int = 1_000_000
-    device: str = "cuda"
-    log_period: int = 10
-    val_period: int = 5_000_000
-    checkpoint_path: str = "checkpoints"
-    resume_from_checkpoint: str | None = None
-    wandb_project: str = "cs336-language-model"
-    wandb_run_name: str | None = None
-    use_torch_compile: bool = True
-    num_workers: int = 4
-
-
-@dataclass(frozen=True)
-class ProfilerConfig:
-    enabled: bool = False
-    wait: int = 5
-    warmup: int = 2
-    active: int = 3
-    repeat: int = 3
-    dirpath: str = "tb_logs"
-
-
-@dataclass(frozen=True)
-class ExperimentConfig:
-    model: ModelConfig
-    optimizer: BaseOptimizerConfig
-    data: DataConfig
-    trainer: TrainerConfig
-    profiler: ProfilerConfig
-
-
-def create_optimizer(model: torch.nn.Module, config: BaseOptimizerConfig) -> torch.optim.Optimizer:
-    """
-    Constructs the optimizer, splitting parameters into groups for weight decay.
-
-    Logic:
-    - Parameters with 2+ dimensions (Matrices) -> Weight Decay applied.
-    - Parameters with < 2 dimensions (Vectors: Norms/Biases) -> 0.0 Weight Decay.
-    - If Muon is selected, 2D parameters use Muon, 1D parameters use internal AdamW.
-    """
-    param_dict = {pn: p for pn, p in model.named_parameters() if p.requires_grad}
-
-    decay_params = [p for p in param_dict.values() if p.ndim >= 2]
-    nodecay_params = [p for p in param_dict.values() if p.ndim < 2]
-
-    if config.name == "adamw":
-        assert isinstance(config, AdamWConfig)
-        optim_groups = [
-            {"params": decay_params, "weight_decay": config.weight_decay},
-            {"params": nodecay_params, "weight_decay": 0.0},
-        ]
-        return optim.AdamW(
-            optim_groups,
-            lr=config.learning_rate,
-            betas=(config.beta1, config.beta2),
-            eps=config.eps,
-        )
-
-    elif config.name == "muon":
-        assert isinstance(config, MuonConfig)
-        return Muon(
-            params=decay_params,
-            lr=config.muon_learning_rate,
-            momentum=config.muon_momentum,
-            nesterov=config.muon_nesterov,
-            ns_steps=config.muon_ns_steps,
-            weight_decay=config.muon_weight_decay,
-            adamw_params=nodecay_params,
-            adamw_lr=config.learning_rate,
-            adamw_betas=(config.adamw_beta1, config.adamw_beta2),
-            adamw_eps=config.adamw_eps,
-            adamw_weight_decay=0.0,
-        )
-
-    else:
-        raise ValueError(f"Unknown optimizer: {config.name}")
 
 
 def get_optimizer_config(cfg: DictConfig) -> BaseOptimizerConfig:

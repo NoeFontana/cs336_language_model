@@ -16,9 +16,7 @@ import hydra
 import torch
 from omegaconf import DictConfig, OmegaConf
 
-from cs336_basics.scripts.tokenize_dataset import tokenize_dataset
-from cs336_basics.scripts.train_bpe import train_and_save_bpe_tokenizer
-from cs336_basics.scripts.train_lm import (
+from cs336_basics.config import (
     AdamWConfig,
     BaseOptimizerConfig,
     DataConfig,
@@ -26,8 +24,13 @@ from cs336_basics.scripts.train_lm import (
     ModelConfig,
     MuonConfig,
     ProfilerConfig,
-    Trainer,
     TrainerConfig,
+)
+
+from .tokenize_dataset import tokenize_dataset
+from .train_bpe import train_and_save_bpe_tokenizer
+from .train_lm import (
+    Trainer,
 )
 
 torch.set_float32_matmul_precision("high")

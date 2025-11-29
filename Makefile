@@ -76,19 +76,19 @@ profile-tokenization: ## Profile the BPE tokenizer training script
 	USE_NATIVE_MERGE=1 PYTHONPATH=src uv run scalene \
 		--cpu --web --profile-exclude threading.py \
 		--- \
-		src/cs336/scripts/train_bpe.py \
+		scripts/a1/train_bpe.py \
 		--vocab-size 32000 \
 		--input-path ~/datasets/cs336/owt_train.txt \
 		--output-prefix ./owt
 
 train-owt-tokenizer:
-	USE_NATIVE_MERGE=1 PYTHONPATH=src uv run src/cs336/scripts/train_bpe.py \
+	USE_NATIVE_MERGE=1 PYTHONPATH=src uv run scripts/a1/train_bpe.py \
 		--vocab-size 32000 \
 		--input-path ~/datasets/cs336/owt_train.txt \
 		--output-prefix ./results/owt
 
 tokenize-dataset: ## Tokenize the default dataset using the default tokenizer
-	PYTHONPATH=src uv run src/cs336/scripts/tokenize_dataset.py
+	PYTHONPATH=src uv run scripts/a1/tokenize_dataset.py
 
 docker-build: ## Build the Docker image locally
 	@echo "🛠️  Building Docker image: $(DOCKER_IMAGE):latest..."
