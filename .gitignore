@@ -1,8 +1,4 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
+# Repo specific
 tests/fixtures/
 **/data/*.txt
 profile.json
@@ -11,6 +7,12 @@ profile.html
 /wandb/
 /checkpoints/
 /outputs/
+benchmark_results.md
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
 # C extensions
 *.so

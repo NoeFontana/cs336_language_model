@@ -59,6 +59,7 @@ dependencies = [
     "humanfriendly",
     "matplotlib",
     "pandas>=2",
+    "tabulate",
 ]
 
 
