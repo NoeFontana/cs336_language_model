@@ -1,0 +1,18 @@
+defaults:
+  - _self_
+  - model: small
+
+model:
+  vocab_size: 32000
+  context_length: 512
+  theta: 10000.0
+  ffn_type: "swiglu"
+  qk_norm: false
+
+benchmark:
+  batch_size: 4
+  warmup_steps: 5
+  measure_steps: 10
+  backward: false
+  device: "cuda"
+  mixed_precision: false
