@@ -7,6 +7,7 @@ import timeit
 import hydra
 import pandas as pd
 import torch
+import torch.cuda.nvtx as nvtx
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
@@ -74,46 +75,52 @@ def main(cfg: DictConfig) -> None:
         benchmark_optimizer: bool = cfg.benchmark.optimizer
         benchmark_backward: bool = cfg.benchmark.backward or benchmark_optimizer
         with ctx:
-            logits = model(x)
+            with nvtx.range("forward"):
+                logits = model(x)
             if benchmark_backward:
-                loss = loss_fn(logits, y)
+                with nvtx.range("loss"):
+                    loss = loss_fn(logits, y)
 
         if benchmark_backward:
-            loss.backward()  # type: ignore[reportPossiblyUnboundVariable]
+            with nvtx.range("backward"):
+                loss.backward()  # type: ignore[reportPossiblyUnboundVariable]
         if benchmark_optimizer:
             # Typically, we should do scaling/unscaling in reduced precision
             # we'll forego it for this benchmark
-            optim.step()
+            with nvtx.range("optim"):
+                optim.step()
 
         if device.type == "cuda":
             torch.cuda.synchronize()
 
     # Warmup
-    logger.info(f"Running {cfg.benchmark.warmup_steps} warmup steps...")
-    model.train()
-    for _ in range(cfg.benchmark.warmup_steps):
-        if cfg.benchmark.backward:
-            model.zero_grad(set_to_none=True)
-        step_fn()
+    with nvtx.range("warmup"):
+        logger.info(f"Running {cfg.benchmark.warmup_steps} warmup steps...")
+        model.train()
+        for _ in range(cfg.benchmark.warmup_steps):
+            if cfg.benchmark.backward:
+                model.zero_grad(set_to_none=True)
+            step_fn()
 
-    if profile_memory:
-        torch.cuda.memory._record_memory_history(max_entries=1_000_000)
+        if profile_memory:
+            torch.cuda.memory._record_memory_history(max_entries=1_000_000)
 
     # Measurement
     logger.info(f"Running {cfg.benchmark.measure_steps} measurement steps...")
     timings = []
-    for _ in range(cfg.benchmark.measure_steps):
-        if cfg.benchmark.backward:
-            model.zero_grad(set_to_none=True)
+    with nvtx.range("benchmark"):
+        for _ in range(cfg.benchmark.measure_steps):
+            if cfg.benchmark.backward:
+                model.zero_grad(set_to_none=True)
 
-        start_time = timeit.default_timer()
-        step_fn()
-        end_time = timeit.default_timer()
-        timings.append(end_time - start_time)
+            start_time = timeit.default_timer()
+            step_fn()
+            end_time = timeit.default_timer()
+            timings.append(end_time - start_time)
 
-    if profile_memory:
-        torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
-        torch.cuda.memory._record_memory_history(enabled=None)
+        if profile_memory:
+            torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
+            torch.cuda.memory._record_memory_history(enabled=None)
 
     mean_time = statistics.mean(timings)
     stdev_time = statistics.stdev(timings) if len(timings) > 1 else 0.0
