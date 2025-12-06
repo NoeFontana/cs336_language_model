@@ -11,6 +11,7 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 from cs336_basics.loss.cross_entropy import CrossEntropyLoss
+from cs336_basics.optim.adamw import AdamW
 from cs336_basics.transformer import TransformerLM
 
 logging.basicConfig(level=logging.INFO)
@@ -47,6 +48,8 @@ def main(cfg: DictConfig) -> None:
         qk_norm=model_cfg.qk_norm,
     ).to(device)
 
+    optim = AdamW(params=model.parameters())
+
     logger.info("Generating random data...")
     batch_size = cfg.benchmark.batch_size
     seq_len = model_cfg.context_length
@@ -68,7 +71,8 @@ def main(cfg: DictConfig) -> None:
 
     def step_fn() -> None:
         """Performs a single forward (and optionally backward) pass."""
-        benchmark_backward: bool = cfg.benchmark.backward
+        benchmark_optimizer: bool = cfg.benchmark.optimizer
+        benchmark_backward: bool = cfg.benchmark.backward or benchmark_optimizer
         with ctx:
             logits = model(x)
             if benchmark_backward:
@@ -76,6 +80,10 @@ def main(cfg: DictConfig) -> None:
 
         if benchmark_backward:
             loss.backward()  # type: ignore[reportPossiblyUnboundVariable]
+        if benchmark_optimizer:
+            # Typically, we should do scaling/unscaling in reduced precision
+            # we'll forego it for this benchmark
+            optim.step()
 
         if device.type == "cuda":
             torch.cuda.synchronize()
