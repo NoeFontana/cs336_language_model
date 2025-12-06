@@ -1,4 +1,5 @@
 import torch
+import torch.cuda.nvtx as nvtx
 from torch import nn
 
 import cs336_basics.layer as layer
@@ -57,10 +58,15 @@ class TransformerLM(nn.Module):
             A tensor of output logits for the next token, with shape
             (..., seq_len, vocab_size).
         """
-        embed = self.embedding(x)
+        with nvtx.range("embed"):
+            embed = self.embedding(x)
 
         token_positions = torch.arange(0, x.shape[-1], device=x.device)
-        for block in self.transformer_blocks:
-            embed = block(embed, token_positions)
-        embed = self.out_norm(embed)
-        return self.out_linear(embed)
+        with nvtx.range("transformer"):
+            for block in self.transformer_blocks:
+                embed = block(embed, token_positions)
+        with nvtx.range("norm_out"):
+            embed = self.out_norm(embed)
+        with nvtx.range("linear_out"):
+            out = self.out_linear(embed)
+        return out

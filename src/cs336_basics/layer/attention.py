@@ -1,4 +1,5 @@
 import torch
+import torch.cuda.nvtx as nvtx
 from einops import einsum, rearrange
 from torch import nn
 
@@ -91,13 +92,21 @@ def scaled_dot_product_attention(
     """
     d_k = q.shape[-1]
     scaling = d_k**-0.5
-    att: torch.Tensor = einsum(q, k, "... queries d_k, ... keys d_k -> ... queries keys") * scaling
+
+    with nvtx.range("attention_scores"):
+        att: torch.Tensor = einsum(q, k, "... queries d_k, ... keys d_k -> ... queries keys") * scaling
 
     if mask is not None:
-        att.masked_fill_(~mask, float("-inf"))
+        with nvtx.range("masking"):
+            att.masked_fill_(~mask, float("-inf"))
 
-    att = softmax(att, dim=-1)
-    return att @ v
+    with nvtx.range("softmax"):
+        att = softmax(att, dim=-1)
+
+    with nvtx.range("scaled_attention"):
+        out = att @ v
+
+    return out
 
 
 class MHSA(nn.Module):
@@ -158,10 +167,12 @@ class MHSA(nn.Module):
         Returns:
             The output tensor of shape (..., seq_len, d_model).
         """
-        qkv: torch.Tensor = self.qkv_proj(x)
+        with nvtx.range("qkv_proj"):
+            qkv: torch.Tensor = self.qkv_proj(x)
 
-        qkv_h = rearrange(qkv, "... s (three h d) -> three ... h s d", three=3, h=self.num_heads, d=self.d_head)
-        q_h, k_h, v_h = qkv_h[0], qkv_h[1], qkv_h[2]
+        with nvtx.range("arrange_to_mhsa"):
+            qkv_h = rearrange(qkv, "... s (three h d) -> three ... h s d", three=3, h=self.num_heads, d=self.d_head)
+            q_h, k_h, v_h = qkv_h[0], qkv_h[1], qkv_h[2]
 
         if self.qk_norm:
             q_h = self.q_norm(q_h)
@@ -171,12 +182,16 @@ class MHSA(nn.Module):
         causal_mask = self.mask[:seq_len, :seq_len]
 
         if token_positions is not None and self.rope is not None:
-            q_h = self.rope(q_h, token_positions)
-            k_h = self.rope(k_h, token_positions)
+            with nvtx.range("rope"):
+                q_h = self.rope(q_h, token_positions)
+                k_h = self.rope(k_h, token_positions)
 
         atts = scaled_dot_product_attention(q_h, k_h, v_h, causal_mask)
-        atts = rearrange(atts, "... h s d -> ... s (h d)", h=self.num_heads, d=self.d_head)
 
-        out = self.out_proj(atts)
+        with nvtx.range("arrange_from_mhsa"):
+            atts = rearrange(atts, "... h s d -> ... s (h d)", h=self.num_heads, d=self.d_head)
+
+        with nvtx.range("out_proj"):
+            out = self.out_proj(atts)
 
         return out

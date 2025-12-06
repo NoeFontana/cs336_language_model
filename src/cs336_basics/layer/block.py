@@ -1,4 +1,5 @@
 import torch
+import torch.cuda.nvtx as nvtx
 from torch import nn
 
 from .attention import MHSA
@@ -60,5 +61,8 @@ class TransformerBlock(nn.Module):
         Returns:
             The output tensor of shape (..., seq_len, d_model).
         """
-        x = x + self.attn(self.ln1(x), token_positions)
-        return x + self.ffn(self.ln2(x))
+        with nvtx.range("self_attention"):
+            x = x + self.attn(self.ln1(x), token_positions)
+        with nvtx.range("ffn"):
+            out = x + self.ffn(self.ln2(x))
+        return out
