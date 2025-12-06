@@ -16,3 +16,4 @@ benchmark:
   backward: false
   device: "cuda"
   mixed_precision: false
+  profile_memory: false

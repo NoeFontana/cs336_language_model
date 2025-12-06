@@ -47,11 +47,6 @@ def main(cfg: DictConfig) -> None:
         qk_norm=model_cfg.qk_norm,
     ).to(device)
 
-    if cfg.benchmark.get("mixed_precision", False) and device.type == "cuda":
-        dtype = torch.bfloat16
-    else:
-        dtype = torch.float32
-
     logger.info("Generating random data...")
     batch_size = cfg.benchmark.batch_size
     seq_len = model_cfg.context_length
@@ -62,14 +57,17 @@ def main(cfg: DictConfig) -> None:
 
     loss_fn = CrossEntropyLoss().to(device)
 
+    if cfg.benchmark.get("mixed_precision", False) and device.type == "cuda":
+        dtype = torch.bfloat16
+        ctx: contextlib.AbstractContextManager = torch.autocast(device_type="cuda", dtype=dtype)
+    else:
+        dtype = torch.float32
+        ctx = contextlib.nullcontext()
+
+    profile_memory: bool = cfg.benchmark.get("profile_memory", False)
+
     def step_fn() -> None:
         """Performs a single forward (and optionally backward) pass."""
-        # Enable autocast for mixed precision on CUDA
-        if device.type == "cuda" and cfg.benchmark.get("mixed_precision", False):
-            ctx: contextlib.AbstractContextManager = torch.autocast(device_type="cuda", dtype=dtype)
-        else:
-            ctx = contextlib.nullcontext()
-
         with ctx:
             logits = model(x)
             if cfg.benchmark.backward:
@@ -89,6 +87,9 @@ def main(cfg: DictConfig) -> None:
             model.zero_grad(set_to_none=True)
         step_fn()
 
+    if profile_memory:
+        torch.cuda.memory._record_memory_history(max_entries=1_000_000)
+
     # Measurement
     logger.info(f"Running {cfg.benchmark.measure_steps} measurement steps...")
     timings = []
@@ -100,6 +101,10 @@ def main(cfg: DictConfig) -> None:
         step_fn()
         end_time = timeit.default_timer()
         timings.append(end_time - start_time)
+
+    if profile_memory:
+        torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
+        torch.cuda.memory._record_memory_history(enabled=None)
 
     mean_time = statistics.mean(timings)
     stdev_time = statistics.stdev(timings) if len(timings) > 1 else 0.0
