@@ -69,6 +69,7 @@ def main(cfg: DictConfig) -> None:
         ctx = contextlib.nullcontext()
 
     profile_memory: bool = cfg.benchmark.get("profile_memory", False)
+    output_file: str = cfg.benchmark.output
 
     def step_fn() -> None:
         """Performs a single forward (and optionally backward) pass."""
@@ -119,7 +120,7 @@ def main(cfg: DictConfig) -> None:
             timings.append(end_time - start_time)
 
         if profile_memory:
-            torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
+            torch.cuda.memory._dump_snapshot(f"{output_file}_memory_snapshot.pickle")
             torch.cuda.memory._record_memory_history(enabled=None)
 
     mean_time = statistics.mean(timings)
@@ -152,11 +153,10 @@ def main(cfg: DictConfig) -> None:
     markdown_table = df.to_markdown(index=False)
     print("\n" + markdown_table + "\n")
 
-    output_file = "benchmark_results.md"
+    markdown_file = output_file if output_file.endswith(".md") else output_file + ".md"
+    file_exists_and_has_content = os.path.exists(markdown_file) and os.path.getsize(markdown_file) > 0
 
-    file_exists_and_has_content = os.path.exists(output_file) and os.path.getsize(output_file) > 0
-
-    with open(output_file, "a") as f:
+    with open(markdown_file, "a") as f:
         if not file_exists_and_has_content:
             f.write(markdown_table)
         else:
@@ -167,7 +167,7 @@ def main(cfg: DictConfig) -> None:
                 f.write("\n")
                 f.write("\n".join(lines[2:]))
 
-    logger.info(f"Results saved to {output_file}")
+    logger.info(f"Results saved to {markdown_file}")
 
 
 if __name__ == "__main__":
