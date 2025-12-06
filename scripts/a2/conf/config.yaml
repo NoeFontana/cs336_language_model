@@ -18,3 +18,4 @@ benchmark:
   mixed_precision: false
   profile_memory: false
   optimizer: false
+  output: "benchmark_results.md"
