@@ -45,7 +45,7 @@ class Tokenizer:
             # We sort by decreasing length to be compatible with overlapping patterns.
             # E.g. if we have specials tokens <a>, <b> and <a><b>, we want the last one to match text<a><b>text
             self.special_tokens_pattern = re.compile(
-                b"|".join(re.escape(tok.encode("utf-8")) for tok in sorted(special_tokens, key=len, reverse=True)),
+                b"|".join(re.escape(tok.encode("utf-8")) for tok in sorted(special_tokens, key=len, reverse=True)),  # ty: ignore[invalid-argument-type]
                 flags=re.V1,
             )
 
