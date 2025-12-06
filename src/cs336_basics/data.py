@@ -77,15 +77,15 @@ class LanguageModelDataset(Dataset):
     def __len__(self) -> int:
         return self.num_samples
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         # Each worker process will open its own memory map the first time it fetches a batch.
         if not hasattr(self, "data"):
             self.data = np.memmap(self.bin_file, dtype=np.uint16, mode="r")
 
-        if idx < 0 or idx >= len(self):
+        if index < 0 or index >= len(self):
             raise IndexError("Index out of bounds")
 
-        start_idx = idx * self.context_length
+        start_idx = index * self.context_length
         end_idx = start_idx + self.context_length + 1
 
         chunk = self.data[start_idx:end_idx].astype(np.int64)
