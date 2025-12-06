@@ -49,6 +49,8 @@ def main(cfg: DictConfig) -> None:
         qk_norm=model_cfg.qk_norm,
     ).to(device)
 
+    model.compile(disable=not cfg.benchmark.compile)
+
     optim = AdamW(params=model.parameters())
 
     logger.info("Generating random data...")
@@ -60,6 +62,7 @@ def main(cfg: DictConfig) -> None:
     y = torch.randint(0, vocab_size, (batch_size, seq_len), device=device)
 
     loss_fn = CrossEntropyLoss().to(device)
+    loss_fn.compile(disable=not cfg.benchmark.compile)
 
     if cfg.benchmark.get("mixed_precision", False) and device.type == "cuda":
         dtype = torch.bfloat16
