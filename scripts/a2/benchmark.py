@@ -68,12 +68,13 @@ def main(cfg: DictConfig) -> None:
 
     def step_fn() -> None:
         """Performs a single forward (and optionally backward) pass."""
+        benchmark_backward: bool = cfg.benchmark.backward
         with ctx:
             logits = model(x)
-            if cfg.benchmark.backward:
+            if benchmark_backward:
                 loss = loss_fn(logits, y)
 
-        if cfg.benchmark.backward:
+        if benchmark_backward:
             loss.backward()  # type: ignore[reportPossiblyUnboundVariable]
 
         if device.type == "cuda":
