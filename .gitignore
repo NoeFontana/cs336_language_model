@@ -8,6 +8,7 @@ profile.html
 /checkpoints/
 /outputs/
 benchmark_results.md
+/benchmarks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
