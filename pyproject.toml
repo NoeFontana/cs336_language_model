@@ -60,6 +60,7 @@ dependencies = [
     "matplotlib",
     "pandas>=2",
     "tabulate",
+    "triton>=3.2.0",
 ]
 
 
