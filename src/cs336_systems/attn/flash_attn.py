@@ -55,9 +55,9 @@ class TorchFlashAttn2Fn(torch.autograd.Function):
                 current_bq = qi.size(0)
 
                 # setup HBM outputs
-                oi = torch.zeros_like(qi)
-                li = torch.zeros((current_bq,), device=qi.device)
-                mi = torch.full((current_bq,), -torch.inf, device=qi.device)
+                oi = torch.zeros_like(qi, dtype=torch.float32)
+                li = torch.zeros((current_bq,), device=qi.device, dtype=torch.float32)
+                mi = torch.full((current_bq,), -torch.inf, device=qi.device, dtype=torch.float32)
 
                 for j in range(Tk):
                     kj = k_b[j * Bk : (j + 1) * Bk]
