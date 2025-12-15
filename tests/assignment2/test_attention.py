@@ -70,7 +70,6 @@ def test_flash_forward_pass_pytorch():
     _test_flash_forward_pass(get_flashattention_autograd_function_pytorch().apply)  # ty: ignore[unresolved-attribute]
 
 
-@pytest.mark.skip(reason="Test not yet implemented")
 @pytest.mark.skipif(
     not torch.cuda.is_available(),
     reason="A GPU must be available to run Triton kernels",
