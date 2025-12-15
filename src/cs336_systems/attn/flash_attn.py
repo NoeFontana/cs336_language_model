@@ -77,7 +77,7 @@ class TorchFlashAttn2Fn(torch.autograd.Function):
                     # book-keeping
                     mi = mij
 
-                Oi = torch.diag(li**-1) @ oi
+                Oi = oi / li[..., None]
                 Li = mi + torch.log(li)
 
                 out[b, i * Bq : (i + 1) * Bq] = Oi
