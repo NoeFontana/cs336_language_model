@@ -27,23 +27,22 @@ class TorchFlashAttn2Fn(torch.autograd.Function):
             out: Output tensor of shape (batch_size, seq_len, d_head).
             logsumexp: Logsumexp tensor of shape (batch_size, seq_len).
         """
-        q_shape = q.shape
 
+        batch_size, seq_len_q, d_head = q.shape
+        _, seq_len_k, _ = k.shape
         # Tiles of size (Bq * d)
         Bq = 16**2
-        Tq = torch.ceil(torch.tensor(q_shape[1] / Bq)).to(torch.long)
+        Tq = (seq_len_q + Bq - 1) // Bq
 
         # Tiles of size (Bk * d)
         Bk = 16**2
-        Tk = torch.ceil(torch.tensor(k.shape[1] / Bk)).to(torch.long)
+        Tk = (seq_len_k + Bk - 1) // Bk
 
-        d = q.size(-1)
-        rsqrt_d = torch.rsqrt(torch.tensor(d))
+        rsqrt_d = d_head**-0.5
 
         out = torch.empty_like(q)
-        logsumexp = torch.empty(q_shape[:-1])
+        logsumexp = torch.empty((batch_size, seq_len_q))
 
-        batch_size = q_shape[0]
         for b in range(batch_size):
             q_b = q[b]
             k_b = k[b]
