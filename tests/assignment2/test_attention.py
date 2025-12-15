@@ -66,7 +66,6 @@ def _test_flash_forward_pass(impl, device="cpu", is_causal=False):
     torch.testing.assert_close(tensor, l_ref, rtol=1e-2, atol=1e-2)
 
 
-@pytest.mark.skip(reason="Test not yet implemented")
 def test_flash_forward_pass_pytorch():
     _test_flash_forward_pass(get_flashattention_autograd_function_pytorch().apply)  # ty: ignore[unresolved-attribute]
 
