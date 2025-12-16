@@ -309,11 +309,21 @@ class TorchFlashAttn2Fn(torch.autograd.Function):
                 li = torch.zeros((current_bq,), device=qi.device, dtype=torch.float32)
                 mi = torch.full((current_bq,), -torch.inf, device=qi.device, dtype=torch.float32)
 
-                for j in range(Tk):
+                limit_k = Tk
+                if is_causal:
+                    limit_k = min(Tk, i + 1)
+
+                for j in range(limit_k):
                     kj = k_b[j * Bk : (j + 1) * Bk]
                     vj = v_b[j * Bk : (j + 1) * Bk]
 
                     sij = qi @ kj.T * rsqrt_d
+
+                    if is_causal:
+                        row_idx = i * Bq + torch.arange(current_bq, device=qi.device)[:, None]
+                        col_idx = j * Bk + torch.arange(kj.size(0), device=qi.device)[None, :]
+                        mask = col_idx > row_idx
+                        sij = torch.where(mask, float("-inf"), sij)
 
                     rowmax = torch.amax(sij, dim=-1)
                     mij = torch.maximum(mi, rowmax)
