@@ -56,12 +56,14 @@ def benchmark(
 
         if provider == "torch":
             # Adapter: Naive expects (B, H, S, D)
+            compiled_scaled_dot_product_attention = torch.compile(scaled_dot_product_attention)
+
             def fn_fwd() -> torch.Tensor:
                 q_t = q.transpose(1, 2)
                 k_t = k.transpose(1, 2)
                 v_t = v.transpose(1, 2)
                 # Ensure mask handling matches your implementation
-                return scaled_dot_product_attention(q_t, k_t, v_t, mask=None)
+                return compiled_scaled_dot_product_attention(q_t, k_t, v_t, mask=None)
 
             # Pre-run to generate graph for backward bench
             o_ref = fn_fwd()
