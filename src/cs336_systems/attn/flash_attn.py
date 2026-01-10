@@ -113,7 +113,7 @@ def flash_fwd_kernel(
         order=(1, 0),  # Note: Dimension 1 is contiguous
     )
 
-    # setup HBM outputs
+    # Setup on-chip buffers
     o = tl.zeros((Q_TILE_SIZE, D), dtype=tl.float32)
 
     l = tl.zeros((Q_TILE_SIZE,), dtype=tl.float32)  # noqa: E741
