@@ -117,7 +117,7 @@ def flash_fwd_kernel(
     o = tl.zeros((Q_TILE_SIZE, D), dtype=tl.float32)
 
     l = tl.zeros((Q_TILE_SIZE,), dtype=tl.float32)  # noqa: E741
-    m = tl.full((Q_TILE_SIZE,), -float("inf"), dtype=tl.float32)
+    prev_max = tl.full((Q_TILE_SIZE,), -float("inf"), dtype=tl.float32)
 
     qi = tl.load(Q_block_ptr, boundary_check=(0, 1), padding_option="zero")
 
@@ -137,24 +137,24 @@ def flash_fwd_kernel(
             sij = tl.where(mask, float("-inf"), sij)
 
         rowmax = tl.max(sij, axis=-1)
-        m_new = tl.maximum(m, rowmax)
-        pij = tl.exp(sij - tl.expand_dims(m_new, axis=-1))
+        running_max = tl.maximum(prev_max, rowmax)
+        pij = tl.exp(sij - tl.expand_dims(running_max, axis=-1))
 
-        scale_diff = tl.exp(m - m_new)
-        l = scale_diff * l + tl.sum(pij, axis=-1)  # noqa: E741
+        correction_coeff = tl.exp(prev_max - running_max)
+        l = correction_coeff * l + tl.sum(pij, axis=-1)  # noqa: E741
 
-        o = tl.expand_dims(scale_diff, axis=-1) * o
+        o = tl.expand_dims(correction_coeff, axis=-1) * o
         o = tl.dot(pij.to(vj.dtype), vj, acc=o)
 
         # book-keeping
-        m = m_new
+        prev_max = running_max
 
         ## Next tile
         K_block_ptr = tl.advance(K_block_ptr, (K_TILE_SIZE, 0))
         V_block_ptr = tl.advance(V_block_ptr, (K_TILE_SIZE, 0))
 
     Oi = o / tl.expand_dims(l, axis=-1)
-    Li = m + tl.log(l)
+    Li = prev_max + tl.log(l)
 
     tl.store(O_block_ptr, Oi.to(O_ptr.type.element_ty), boundary_check=(0, 1))
     tl.store(L_block_ptr, Li, boundary_check=(0,))
