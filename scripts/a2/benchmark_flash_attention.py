@@ -4,16 +4,10 @@ import torch
 import triton
 import triton.testing
 
-# 1. Imports
-# Replace with your actual Triton kernel import
-# from my_flash_v2 import flash_attention
 from cs336_basics.layer.attention import scaled_dot_product_attention
 
-
-# Placeholder wrapper if you haven't imported your kernel yet
-def flash_attention_stub(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, causal: bool = True):
-    raise NotImplementedError("Import your triton kernel above")
-
+# 1. Imports
+from cs336_systems.attn.flash_attn import TritonFlashAttn2Fn
 
 configs = [
     triton.testing.Benchmark(
@@ -58,10 +52,12 @@ def benchmark(
             # Adapter: Naive expects (B, H, S, D)
             compiled_scaled_dot_product_attention = torch.compile(scaled_dot_product_attention)
 
+            q_t = q.transpose(1, 2).contiguous().detach().requires_grad_(True)
+            k_t = k.transpose(1, 2).contiguous().detach().requires_grad_(True)
+            v_t = v.transpose(1, 2).contiguous().detach().requires_grad_(True)
+            do_t = do.transpose(1, 2).contiguous()
+
             def fn_fwd() -> torch.Tensor:
-                q_t = q.transpose(1, 2)
-                k_t = k.transpose(1, 2)
-                v_t = v.transpose(1, 2)
                 # Ensure mask handling matches your implementation
                 return compiled_scaled_dot_product_attention(q_t, k_t, v_t, mask=None)
 
@@ -69,25 +65,29 @@ def benchmark(
             o_ref = fn_fwd()
 
             def fn_bwd() -> None:
-                o_ref.backward(do.transpose(1, 2), retain_graph=True)
+                o_ref.backward(do_t, retain_graph=True)
 
             def fn_e2e() -> None:
                 o = fn_fwd()
-                o.backward(do.transpose(1, 2))
+                o.backward(do_t)
 
         elif provider == "triton":
+            q_in = q.transpose(1, 2).reshape(-1, seq_len, head_dim).contiguous().detach().requires_grad_(True)
+            k_in = k.transpose(1, 2).reshape(-1, seq_len, head_dim).contiguous().detach().requires_grad_(True)
+            v_in = v.transpose(1, 2).reshape(-1, seq_len, head_dim).contiguous().detach().requires_grad_(True)
+            do_in = do.transpose(1, 2).reshape(-1, seq_len, head_dim).contiguous()
 
             def fn_fwd() -> torch.Tensor:
-                return flash_attention_stub(q, k, v, causal=True)
+                return TritonFlashAttn2Fn.apply(q_in, k_in, v_in, True)
 
             o_ref = fn_fwd()
 
             def fn_bwd() -> None:
-                o_ref.backward(do, retain_graph=True)
+                o_ref.backward(do_in, retain_graph=True)
 
             def fn_e2e() -> None:
                 o = fn_fwd()
-                o.backward(do)
+                o.backward(do_in)
 
         ms_fwd = triton.testing.do_bench(fn_fwd, quantiles=[0.5], rep=20, warmup=10)  # pyright: ignore[reportPossiblyUnboundVariable]
         ms_bwd = triton.testing.do_bench(fn_bwd, quantiles=[0.5], rep=20, warmup=10)  # pyright: ignore[reportPossiblyUnboundVariable]
