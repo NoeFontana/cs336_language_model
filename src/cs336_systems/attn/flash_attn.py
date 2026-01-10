@@ -160,7 +160,7 @@ def flash_fwd_kernel(
     tl.store(L_block_ptr, Li, boundary_check=(0,))
 
 
-@torch.compile(disable=True)
+@torch.compile
 def flash_attn_backward_torch(
     q: torch.Tensor,
     k: torch.Tensor,
@@ -172,6 +172,13 @@ def flash_attn_backward_torch(
     is_causal: bool,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     S = q @ k.mT * scale
+
+    if is_causal:
+        seq_len_q, seq_len_k = q.shape[-2], k.shape[-2]
+        q_idx = torch.arange(seq_len_q, device=q.device)[:, None]
+        k_idx = torch.arange(seq_len_k, device=q.device)[None, :]
+        S = S.masked_fill(k_idx > q_idx, float("-inf"))
+
     P = torch.exp(S - logsumexp[..., None])
 
     grad_v = P.mT @ grad_o
