@@ -160,6 +160,31 @@ def flash_fwd_kernel(
     tl.store(L_block_ptr, Li, boundary_check=(0,))
 
 
+@torch.compile(disable=True)
+def flash_attn_backward_torch(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    D: torch.Tensor,
+    grad_o: torch.Tensor,
+    logsumexp: torch.Tensor,
+    scale: float,
+    is_causal: bool,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    S = q @ k.mT * scale
+    P = torch.exp(S - logsumexp[..., None])
+
+    grad_v = P.mT @ grad_o
+    grad_p = grad_o @ v.mT
+
+    grad_softmax = P * (grad_p - D[..., None])
+
+    grad_q = grad_softmax @ k * scale
+    grad_k = grad_softmax.mT @ q * scale
+
+    return grad_q, grad_k, grad_v
+
+
 class TritonFlashAttn2Fn(torch.autograd.Function):
     """A triton implementation of FlashAttention v2."""
 
@@ -364,4 +389,16 @@ class TorchFlashAttn2Fn(torch.autograd.Function):
             grad_v: Gradient with respect to V.
             grad_is_causal: Gradient with respect to is_causal (None).
         """
-        raise NotImplementedError
+        q, k, v, out, logsumexp = ctx.saved_tensors
+
+        (grad_out,) = grad_outputs
+
+        D = torch.sum(out * grad_out, dim=-1)
+
+        scale = q.shape[-1] ** -0.5
+
+        is_causal = ctx.is_causal
+
+        grad_q, grad_k, grad_v = flash_attn_backward_torch(q, k, v, D, grad_out, logsumexp, scale, is_causal)
+
+        return grad_q, grad_k, grad_v, None

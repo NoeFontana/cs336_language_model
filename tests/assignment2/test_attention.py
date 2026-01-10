@@ -85,7 +85,6 @@ def flash_backward_results(impl, is_causal, device=None):
     return q.grad, k.grad, v.grad
 
 
-@pytest.mark.skip(reason="Test not yet implemented")
 def test_flash_backward_pytorch():
     dq_expected, dk_expected, dv_expected = flash_backward_results(lambda *args: _attention_and_lse(*args)[0], False)
 
