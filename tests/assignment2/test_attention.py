@@ -96,7 +96,6 @@ def test_flash_backward_pytorch():
     torch.testing.assert_close(dv_expected, v.grad, rtol=1e-2, atol=1e-2)
 
 
-@pytest.mark.skip(reason="Test not yet implemented")
 @pytest.mark.skipif(
     not torch.cuda.is_available(),
     reason="A GPU must be available to run Triton kernels",

@@ -283,7 +283,19 @@ class TritonFlashAttn2Fn(torch.autograd.Function):
             grad_v: Gradient with respect to V.
             grad_is_causal: Gradient with respect to is_causal (None).
         """
-        raise NotImplementedError
+        q, k, v, out, logsumexp = ctx.saved_tensors
+
+        (grad_out,) = grad_outputs
+
+        D = torch.sum(out * grad_out, dim=-1)
+
+        scale = q.shape[-1] ** -0.5
+
+        is_causal = ctx.is_causal
+
+        grad_q, grad_k, grad_v = flash_attn_backward_torch(q, k, v, D, grad_out, logsumexp, scale, is_causal)
+
+        return grad_q, grad_k, grad_v, None
 
 
 class TorchFlashAttn2Fn(torch.autograd.Function):
