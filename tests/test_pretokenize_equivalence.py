@@ -1,11 +1,12 @@
 import collections
+from typing import cast
 
-import cs336_native
 import pytest
 import regex as re
 from hypothesis import given
 from hypothesis import strategies as st
 
+import cs336_native
 from cs336_basics.pretokenization import _batch_count_from_segment
 
 # The pretokenization pattern from pretokenization.py
@@ -17,7 +18,9 @@ def python_pretokenize(data: bytes, special_tokens: list[str]) -> collections.Co
     # Simplified version of the logic in pretokenization.py for equivalence testing
     if special_tokens:
         special_tokens_pattern = re.compile(
-            b"|".join(re.escape(tok.encode("utf-8")) for tok in sorted(special_tokens, key=len, reverse=True)),
+            b"|".join(
+                cast(bytes, re.escape(tok.encode("utf-8"))) for tok in sorted(special_tokens, key=len, reverse=True)
+            ),
             flags=re.V1,
         )
     else:

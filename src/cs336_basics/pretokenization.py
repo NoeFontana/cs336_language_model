@@ -5,7 +5,7 @@ from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial, reduce
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, cast
 
 import regex as re
 
@@ -170,7 +170,9 @@ def chunked_pretokenization(
     # E.g. if we have specials tokens <a>, <b> and <a><b>, we want the last one to match text<a><b>text
     if special_tokens:
         special_tokens_pattern = re.compile(
-            b"|".join(re.escape(tok.encode("utf-8")) for tok in sorted(special_tokens, key=len, reverse=True)),
+            b"|".join(
+                cast(bytes, re.escape(tok.encode("utf-8"))) for tok in sorted(special_tokens, key=len, reverse=True)
+            ),
             flags=re.V1,
         )
     else:
