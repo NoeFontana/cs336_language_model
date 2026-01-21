@@ -85,7 +85,7 @@ train-owt-tokenizer:
 	USE_NATIVE_MERGE=1 PYTHONPATH=src uv run scripts/a1/train_bpe.py \
 		--vocab-size 32000 \
 		--input-path ~/datasets/cs336/owt_train.txt \
-		--output-prefix ./results/owt
+		--output-prefix ./owt
 
 tokenize-dataset: ## Tokenize the default dataset using the default tokenizer
 	PYTHONPATH=src uv run scripts/a1/tokenize_dataset.py

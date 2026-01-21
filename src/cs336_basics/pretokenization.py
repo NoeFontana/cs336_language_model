@@ -105,11 +105,12 @@ def process_chunk(
         chunk_data = memoryview(mm)[start:end]
 
         last_end = 0
-        for special_match in re.finditer(special_tokens_pattern, chunk_data, concurrent=False):
-            corpus_segment = chunk_data[last_end : special_match.start()]
+        if special_tokens_pattern is not None:
+            for special_match in re.finditer(special_tokens_pattern, chunk_data, concurrent=False):
+                corpus_segment = chunk_data[last_end : special_match.start()]
 
-            pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern))
-            last_end = special_match.end()
+                pretokens.update(_batch_count_from_segment(corpus_segment, compiled_pretoken_pattern))
+                last_end = special_match.end()
             del special_match
             del corpus_segment
 
@@ -146,6 +147,13 @@ def chunked_pretokenization(
         A dictionary mapping each unique pre-token to its total frequency count
         across the entire corpus.
     """
+    try:
+        import cs336_native
+
+        return Counter(cs336_native.pretokenize_file(str(corpus_path), special_tokens))
+    except (ImportError, AttributeError) as e:
+        logging.getLogger(__name__).warning(f"Native pretokenization not available, falling back to Python: {e}")
+
     cpu_count = os.cpu_count() or 1
     if max_workers is None:
         max_workers = cpu_count
@@ -160,10 +168,13 @@ def chunked_pretokenization(
 
     # We sort by decreasing length to be compatible with overlapping patterns.
     # E.g. if we have specials tokens <a>, <b> and <a><b>, we want the last one to match text<a><b>text
-    special_tokens_pattern = re.compile(
-        b"|".join(re.escape(tok.encode("utf-8")) for tok in sorted(special_tokens, key=len, reverse=True)),
-        flags=re.V1,
-    )
+    if special_tokens:
+        special_tokens_pattern = re.compile(
+            b"|".join(re.escape(tok.encode("utf-8")) for tok in sorted(special_tokens, key=len, reverse=True)),
+            flags=re.V1,
+        )
+    else:
+        special_tokens_pattern = None
 
     # Compile the pre-tokenization pattern once in the main process.
     pretoken_pattern_str = rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
