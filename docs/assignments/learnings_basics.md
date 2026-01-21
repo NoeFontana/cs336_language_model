@@ -60,7 +60,7 @@ Experiments done over a few iterations:
     - OpenWebText tokenizer on OpenWebText data: 4.34 bytes/token
 
 ??? question "What happens if you tokenize your OpenWebText sample with the TinyStories tokenizer? Compare the compression ratio and/or qualitatively describe what happens."
-    When tokenizing the OpenWebText sample with the TinyStories tokenizer, the compression ratio is 3.26 bytes/token which is lower than the 4.34 bytes/token of the OpenWebText tokenizer on its own data, indicating less efficient encoding for out-of-domain text. The TinyStories tokenizer, trained on a a smaller and different corpus, and with a smaller vocabulary size, breaks down the more diverse OpenWebText into more numerous, smaller tokens.
+    When tokenizing the OpenWebText sample with the TinyStories tokenizer, the compression ratio is 3.26 bytes/token which is lower than the 4.34 bytes/token of the OpenWebText tokenizer on its own data, indicating less efficient encoding for out-of-domain text. The TinyStories tokenizer, trained on a smaller and different corpus, and with a smaller vocabulary size, breaks down the more diverse OpenWebText into more numerous, smaller tokens.
 
 ??? question "Estimate the throughput of your tokenizer (e.g., in bytes/second). How long would it take to tokenize the Pile dataset (825GB of text)?"
     Measuring the performance of our owt trained tokenizer on owt_valid.txt, we obtain a throughput of 1.2 MB/s.
