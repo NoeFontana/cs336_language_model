@@ -137,11 +137,11 @@ Experiments done over a few iterations:
 
 <!-- prettier-ignore-start -->
 
-??? question " Perform a hyperparameter sweep over the learning rates and report the final losses (or note divergence if the optimizer diverges).
+??? question "Perform a hyperparameter sweep over the learning rates and report the final losses (or note divergence if the optimizer diverges)."
     We start with a logarithmic search from 1e-4 to 1e-1, over a smaller number of steps. We discover that the model diverges at 1e-1.
     From there a finer search between 5e-3 and 5e-2. We see that 1e-2 is at the verge of stability and 5e-2 still diverges. We do a final run for the assignments number of steps with 1e-2. The validation loss is: 1.41 with a minimum reached of 1.32.
 
-??? question " Vary your batch size all the way from 1 to the GPU memory limit. Try at least a few batch sizes in between, including typical sizes like 64 and 128.
+??? question "Vary your batch size all the way from 1 to the GPU memory limit. Try at least a few batch sizes in between, including typical sizes like 64 and 128."
     Batch size of 512 results in OOM with the basic implementation.
     Batch size of 256 is less stable than 64 with previous learning_rate. Typically we increase learning rate with batch_size so we'll just carry on to the next lower batch_size.
     Batch size of 128 results in slightly worse validation losses for equivalent input counts. We could tune the learning rate further.
@@ -185,7 +185,7 @@ Experiments done over a few iterations:
     SiLU reached 1.41 final loss vs 1.33 for SwiGLU.
     From the loss, curve this is more chance than anything for this experiment. Larger scales experiments are warranted to show that SwiGLU is better.
 
-??? question "Train your language model on OpenWebText with the same model architecture and total training  iterations as TinyStories. How well does this model do?
+??? question "Train your language model on OpenWebText with the same model architecture and total training  iterations as TinyStories. How well does this model do?"
     The loss function converges much more slowly. It ends around ~4, for a similar configuration, where only the number of tokens was increased 32000.
     The generated sentences ends up repeating themselves.
 
