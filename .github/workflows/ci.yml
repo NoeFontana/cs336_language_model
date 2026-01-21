@@ -45,7 +45,7 @@ jobs:
       - name: Run ruff format check
         run: uv run ruff format --check
 
-      - name: Run type checking with pyright
+      - name: Run type checking
         run: uv run ty check
 
       - name: Run tests with coverage
