@@ -4,8 +4,30 @@ version = "0.1.0"
 edition = "2024"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 ahash = "0.8.12"
 pyo3 = { version = "0.27.1", features = ["extension-module"] }
+regex = "1.10"
+rayon = "1.8"
+pcre2 = "0.2"
+memmap2 = "0.9"
+memchr = "2.7"
+pprof = { version = "0.13", features = ["flamegraph"] }
+
+[profile.release]
+panic = "abort"
+lto = "fat"
+debug = true
+opt-level = 3
+codegen-units = 1
+
+[build]
+# -C target-cpu=native tells the compiler to use every instruction 
+# available on your specific machine (the one doing the compiling).
+rustflags = ["-C", "target-cpu=native"]
+
+[[bin]]
+name = "benchmark"
+path = "src/bin/benchmark.rs"
