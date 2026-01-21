@@ -105,8 +105,8 @@ pub fn merge(
             let node_idx = arena.len();
 
             arena.push(Node {
-                token_id: token_id,
-                list_idx: list_idx,
+                token_id,
+                list_idx,
                 prev: prev_node_idx,
                 next: None,
             });
