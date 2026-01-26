@@ -83,7 +83,7 @@ def accounting_b(
     flops["mhsa_projections"] = num_layers * 2 * 4 * context_length * d_model * d_model
     flops["mhsa_attention"] = num_layers * 2 * 2 * context_length * context_length * d_model
 
-    flops["ffn"] = num_layers * 2 * 3 * context_length * d_model * d_ff
+    flops["ffn_swiglu"] = num_layers * 2 * 3 * context_length * d_model * d_ff
     flops["final_linear"] = 2 * context_length * d_model * vocab_size
 
     total_flops = sum(flops.values())

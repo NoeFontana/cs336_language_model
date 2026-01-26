@@ -86,12 +86,11 @@ Experiments done over a few iterations:
     2,013,423,206,400 (54.84%) of the matrix multiplies happen in the ffn.
 
 ??? question "Repeat your analysis with GPT-2 small (12 layers, 768 d_model, 12 heads), GPT-2 medium (24 layers, 1024 d_model, 16 heads), and GPT-2 large (36 layers, 1280 d_model, 20 heads). As the model size increases, which parts of the Transformer LM take up proportionally more or less of the total FLOPs?"
-    As the model size increase, the importances of the ffn and projections increase while the importance of the final layer decreases a lot and the importance of the attetion slightly decreases.
-
+    As the model size increase, the importances of the ffn and projections increase. The importance of the final layer decreases sharply and the importance of the attention slightly decreases.
 
 ??? question "Take GPT-2 XL and increase the context length to 16,384. How does the total FLOPs for one forward pass change? How do the relative contribution of FLOPs of the model components change?"
-    The total FLOPs grow drastically to 149,522,795,724,800 (33x).
-    The attention FLOPs blow up to 55% and cause the other contributions to decrease relatively.
+    The total FLOPs grow drastically to 136,054,099,148,800 (37x).
+    The attention FLOPs blow up to 61% and cause the other contributions to decrease relatively.
 <!-- prettier-ignore-end -->
 
 ### learning_rate_tuning
