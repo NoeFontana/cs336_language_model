@@ -105,26 +105,38 @@ if __name__ == "__main__":
     VOCAB_SIZE = 50_257
     CONTEXT_LENGTH = 1_024
 
+    # Note: the 8 / 3 multiplier is due to the SwiGLU activation function
+    # It's a bit crude to round to the nearest integer, but it's close enough
+    # Ideally, we would round to the nearest multiple of 64 (for alignment) or 256 (for efficient GEMMs)
+
     # --- GPT-2 Small ---
     logger.info("\n" + "=" * 20 + " GPT-2 Small Analysis " + "=" * 20)
-    accounting_a(vocab_size=VOCAB_SIZE, num_layers=12, d_model=768, d_ff=768 * 4)
-    accounting_b(vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=12, d_model=768, d_ff=768 * 4)
+    accounting_a(vocab_size=VOCAB_SIZE, num_layers=12, d_model=768, d_ff=round(768 * 8 / 3))
+    accounting_b(
+        vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=12, d_model=768, d_ff=round(768 * 8 / 3)
+    )
 
     # --- GPT-2 Medium ---
     logger.info("\n" + "=" * 20 + " GPT-2 Medium Analysis " + "=" * 20)
-    accounting_a(vocab_size=VOCAB_SIZE, num_layers=24, d_model=1024, d_ff=1024 * 4)
-    accounting_b(vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=24, d_model=1024, d_ff=1024 * 4)
+    accounting_a(vocab_size=VOCAB_SIZE, num_layers=24, d_model=1024, d_ff=round(1024 * 8 / 3))
+    accounting_b(
+        vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=24, d_model=1024, d_ff=round(1024 * 8 / 3)
+    )
 
     # --- GPT-2 Large ---
     logger.info("\n" + "=" * 20 + " GPT-2 Large Analysis " + "=" * 20)
-    accounting_a(vocab_size=VOCAB_SIZE, num_layers=36, d_model=1280, d_ff=1280 * 4)
-    accounting_b(vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=36, d_model=1280, d_ff=1280 * 4)
+    accounting_a(vocab_size=VOCAB_SIZE, num_layers=36, d_model=1280, d_ff=round(1280 * 8 / 3))
+    accounting_b(
+        vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=36, d_model=1280, d_ff=round(1280 * 8 / 3)
+    )
 
     # --- GPT-2 XL ---
     logger.info("\n" + "=" * 20 + " GPT-2 XL Analysis " + "=" * 20)
-    accounting_a(vocab_size=VOCAB_SIZE, num_layers=48, d_model=1600, d_ff=1600 * 4)
-    accounting_b(vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=48, d_model=1600, d_ff=1600 * 4)
+    accounting_a(vocab_size=VOCAB_SIZE, num_layers=48, d_model=1600, d_ff=round(1600 * 8 / 3))
+    accounting_b(
+        vocab_size=VOCAB_SIZE, context_length=CONTEXT_LENGTH, num_layers=48, d_model=1600, d_ff=round(1600 * 8 / 3)
+    )
 
     # --- GPT-2 XL context length 16,384---
     logger.info("\n" + "=" * 20 + " GPT-2 XL Analysis " + "=" * 20)
-    accounting_b(vocab_size=VOCAB_SIZE, context_length=16384, num_layers=48, d_model=1600, d_ff=1600 * 4)
+    accounting_b(vocab_size=VOCAB_SIZE, context_length=16384, num_layers=48, d_model=1600, d_ff=round(1600 * 8 / 3))

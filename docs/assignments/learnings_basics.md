@@ -76,8 +76,8 @@ Experiments done over a few iterations:
 <!-- prettier-ignore-start -->
 
 ??? question "Consider GPT-2 XL, which has the following configuration: vocab_size : 50,257, context_length : 1,024, num_layers : 48, d_model : 1,600, num_heads : 25, d_ff : 6,400. Suppose we constructed our model using this configuration. How many trainable parameters would our model have? Assuming each parameter is represented using single-precision floating point, how much memory is required to just load this model?"
-    Our model has 2,127,057,600 trainable parameters.
-    This is about 7.92 GiB of memory to load.
+    Our model has 1,635,614,400 trainable parameters.
+    This is about 6.09 GiB of memory to load.
 
 ??? question "Identify the matrix multiplies required to complete a forward pass of our GPT-2 XL-shaped model. How many FLOPs do these matrix multiplies require in total? Assume that our input sequence has context_length tokens."
     We have matrix multiplies in the ffn, the mhsa projections, the sdpa and the final layer. In total this sums up to about 4,513,336,524,800 FLOPs.
