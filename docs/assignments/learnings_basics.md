@@ -80,10 +80,10 @@ Experiments done over a few iterations:
     This is about 6.09 GiB of memory to load.
 
 ??? question "Identify the matrix multiplies required to complete a forward pass of our GPT-2 XL-shaped model. How many FLOPs do these matrix multiplies require in total? Assume that our input sequence has context_length tokens."
-    We have matrix multiplies in the ffn, the mhsa projections, the sdpa and the final layer. In total this sums up to about 4,513,336,524,800 FLOPs.
+    We have matrix multiplies in the embedding, the ffn, the mhsa projections, the sdpa and the final layer. In total this sums up to about 3,671,542,988,800 FLOPs.
 
 ??? question "Based on your analysis above, which parts of the model require the most FLOPs?"
-    3,019,898,880,000 (66.91%) of the matrix multiplies happen in the ffn.
+    2,013,423,206,400 (54.84%) of the matrix multiplies happen in the ffn.
 
 ??? question "Repeat your analysis with GPT-2 small (12 layers, 768 d_model, 12 heads), GPT-2 medium (24 layers, 1024 d_model, 16 heads), and GPT-2 large (36 layers, 1280 d_model, 20 heads). As the model size increases, which parts of the Transformer LM take up proportionally more or less of the total FLOPs?"
     As the model size increase, the importances of the ffn and projections increase while the importance of the final layer decreases a lot and the importance of the attetion slightly decreases.

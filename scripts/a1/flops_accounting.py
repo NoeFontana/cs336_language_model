@@ -78,6 +78,8 @@ def accounting_b(
 
     flops = {}
 
+    flops["input_embedding"] = 2 * context_length * d_model * vocab_size
+
     flops["mhsa_projections"] = num_layers * 2 * 4 * context_length * d_model * d_model
     flops["mhsa_attention"] = num_layers * 2 * 2 * context_length * context_length * d_model
 
